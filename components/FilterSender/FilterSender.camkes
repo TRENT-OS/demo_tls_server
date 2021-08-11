@@ -1,0 +1,22 @@
+/*
+ * Filter Sender
+ *
+ * Copyright (C) 2021, HENSOLDT Cyber GmbH
+ */
+
+import "if_FilterSender.camkes";
+
+import <if_OS_Socket.camkes>;
+
+component FilterSender {
+
+    provides if_FilterSender filterSender_rpc;
+    dataport Buf             filterSender_port;
+
+    //--------------------------------------------------------------------------
+    // Networking
+    uses if_OS_Socket networkStack_rpc;
+
+    // The application will only use one socket so one dataport is sufficient.
+    dataport Buf socket_1_port;
+}

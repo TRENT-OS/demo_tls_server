@@ -17,9 +17,3 @@ NIC_ChanMux_DeclareCAmkESComponent(
     CHANMUX_CHANNEL_NIC_1_CTRL
     CHANMUX_CHANNEL_NIC_1_DATA
 )
-
-NIC_ChanMux_DeclareCAmkESComponent(
-    NwDriver2
-    CHANMUX_CHANNEL_NIC_2_CTRL
-    CHANMUX_CHANNEL_NIC_2_DATA
-)

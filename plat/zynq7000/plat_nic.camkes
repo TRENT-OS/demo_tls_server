@@ -10,9 +10,7 @@
 ChanMux_UART_COMPONENT_DEFINE(
     ChanMux_UART,
     nwDriver1, ctrl,
-    nwDriver1, data,
-    nwDriver2, ctrl,
-    nwDriver2, data
+    nwDriver1, data
 )
 
 #include "NIC_ChanMux/NIC_ChanMux.camkes"
@@ -20,24 +18,16 @@ NIC_ChanMux_COMPONENT_DEFINE(
     NwDriver1,
     NIC_DRIVER_RINGBUFFER_SIZE)
 
-NIC_ChanMux_COMPONENT_DEFINE(
-    NwDriver2,
-    NIC_DRIVER_RINGBUFFER_SIZE)
 
-
-#define FILTER_DEMO_NIC_INSTANCES(_nic1_, _nic2_) \
+#define FILTER_DEMO_NIC_INSTANCES(_nic1_) \
     component ChanMux_UART chanMux_UART; \
     component UART_CHANMUX uart; \
     ChanMux_UART_INSTANCE_CONNECT(chanMux_UART, uart) \
     \
     component NwDriver1 _nic1_; \
-    ChanMux_INSTANCE_CONNECT_CLIENT(chanMux_UART, _nic1_, data, ctrl) \
-    \
-    component NwDriver2 _nic2_; \
-    ChanMux_INSTANCE_CONNECT_CLIENT(chanMux_UART, _nic2_, data, ctrl)
+    ChanMux_INSTANCE_CONNECT_CLIENT(chanMux_UART, _nic1_, data, ctrl)
 
-#define FILTER_DEMO_NIC_CONFIG(_nic1_, _nic2_) \
+#define FILTER_DEMO_NIC_CONFIG(_nic1_) \
     ChanMux_UART_CLIENT_ASSIGN_BADGES( \
-        _nic1_.chanMux_Rpc, \
-        _nic2_.chanMux_Rpc \
+        _nic1_.chanMux_Rpc \
     )

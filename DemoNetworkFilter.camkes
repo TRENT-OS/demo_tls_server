@@ -10,7 +10,6 @@ import <std_connector.camkes>;
 
 import "components/Ticker/Ticker.camkes";
 import "components/FilterListener/FilterListener.camkes";
-import "components/FilterSender/FilterSender.camkes";
 
 #include "os_network_stack/network_stack.camkes"
 
@@ -19,15 +18,6 @@ NwStack_COMPONENT_DEFINE(
     NIC_DRIVER_RINGBUFFER_SIZE,
     NETWORK_STACK_1_NUM_SOCKETS,
     NwStack_NO_ADDITIONAL_INTERFACES)
-
-NwStack_COMPONENT_DEFINE(
-    NwStack2,
-    NIC_DRIVER_RINGBUFFER_SIZE,
-    NETWORK_STACK_2_NUM_SOCKETS,
-    NwStack_NO_ADDITIONAL_INTERFACES)
-
-#include "EntropySource/camkes/EntropySource.camkes"
-EntropySource_COMPONENT_DEFINE(EntropySource)
 
 #include "TimeServer/camkes/TimeServer.camkes"
 TimeServer_COMPONENT_DEFINE(TimeServer)
@@ -41,7 +31,7 @@ assembly {
         //----------------------------------------------------------------------
         // NIC Drivers
         //----------------------------------------------------------------------
-        FILTER_DEMO_NIC_INSTANCES(nwDriver1, nwDriver2)
+        FILTER_DEMO_NIC_INSTANCES(nwDriver1)
 
         //----------------------------------------------------------------------
         // TimeServer
@@ -51,8 +41,7 @@ assembly {
         TimeServer_INSTANCE_CONNECT_CLIENTS(
             timeServer,
             ticker.timeServer_rpc,   ticker.timeServer_notify,
-            nwStack1.timeServer_rpc, nwStack1.timeServer_notify,
-            nwStack2.timeServer_rpc, nwStack2.timeServer_notify
+            nwStack1.timeServer_rpc, nwStack1.timeServer_notify
         )
 
         //----------------------------------------------------------------------
@@ -61,7 +50,7 @@ assembly {
         component Ticker ticker;
 
         //----------------------------------------------------------------------
-        // NwStack #1
+        // NwStack
         //----------------------------------------------------------------------
         component NwStack1 nwStack1;
 
@@ -69,17 +58,6 @@ assembly {
             nwStack1,
             ticker.e_timeout_nwstacktick1,
             nwDriver1
-        )
-
-        //----------------------------------------------------------------------
-        // NwStack #2
-        //----------------------------------------------------------------------
-        component NwStack2 nwStack2;
-
-        NwStack_INSTANCE_CONNECT(
-            nwStack2,
-            ticker.e_timeout_nwstacktick2,
-            nwDriver2
         )
 
         //----------------------------------------------------------------------
@@ -95,45 +73,13 @@ assembly {
             // a minimum of two sockets.
             socket_1_port,
             socket_2_port)
-
-        // Connect the FilterListener to the FilterSender to forward the
-        // received valid messages.
-        connection seL4RPCCall filterListener_filterSender_rpc(
-            from filterListener.filterSender_rpc,
-            to   filterSender.filterSender_rpc);
-
-        connection seL4SharedData filterListener_filterSender_port(
-            from filterListener.filterSender_port,
-            to filterSender.filterSender_port);
-
-        //----------------------------------------------------------------------
-        // EntropySource
-        //----------------------------------------------------------------------
-        component EntropySource entropySource;
-
-        EntropySource_INSTANCE_CONNECT_CLIENT(
-            entropySource,
-            filterListener.entropy_rpc,
-            filterListener.entropy_port)
-
-        //----------------------------------------------------------------------
-        // Filter Sender
-        //----------------------------------------------------------------------
-        component FilterSender filterSender;
-
-        NwStack_INSTANCE_CONNECT_CLIENT(
-            nwStack2,
-            filterSender,
-            networkStack_rpc,
-            socket_1_port)
     }
     configuration {
         TimeServer_CLIENT_ASSIGN_BADGES(
             ticker.timeServer_rpc,
-            nwStack1.timeServer_rpc,
-            nwStack2.timeServer_rpc
+            nwStack1.timeServer_rpc
         )
         // Platform specific configuration.
-        FILTER_DEMO_NIC_CONFIG(nwDriver1, nwDriver2)
+        FILTER_DEMO_NIC_CONFIG(nwDriver1)
     }
 }

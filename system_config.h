@@ -43,23 +43,11 @@
 #define CHANMUX_CHANNEL_NIC_1_CTRL 4
 #define CHANMUX_CHANNEL_NIC_1_DATA 5
 
-#define CHANMUX_CHANNEL_NIC_2_CTRL 7
-#define CHANMUX_CHANNEL_NIC_2_DATA 8
-
 
 //-----------------------------------------------------------------------------
-// ChanMUX clients
+// ChanMUX client
 //-----------------------------------------------------------------------------
 #define CHANMUX_ID_NIC_1 101
-#define CHANMUX_ID_NIC_2 102
-
-
-//-----------------------------------------------------------------------------
-// Filter Sender
-//-----------------------------------------------------------------------------
-#define FILTER_SENDER_NUM_SOCKETS       1
-#define FILTER_SENDER_IP_ADDR           "10.0.0.1"
-#define FILTER_SENDER_PORT              6000
 
 
 //-----------------------------------------------------------------------------
@@ -70,21 +58,9 @@
 
 
 //-----------------------------------------------------------------------------
-// Network Stack 1
+// Network Stack
 //-----------------------------------------------------------------------------
 #define NETWORK_STACK_1_NUM_SOCKETS     FILTER_LISTENER_NUM_SOCKETS
 #define ETH_1_ADDR                      "10.0.0.10"
 #define ETH_1_GATEWAY_ADDR              "10.0.0.1"
 #define ETH_1_SUBNET_MASK               "255.255.255.0"
-
-
-//-----------------------------------------------------------------------------
-// Network Stack 2
-//-----------------------------------------------------------------------------
-#define NETWORK_STACK_2_NUM_SOCKETS     FILTER_SENDER_NUM_SOCKETS
-#define ETH_2_ADDR                      "10.0.0.11"
-#define ETH_2_GATEWAY_ADDR              "10.0.0.1"
-#define ETH_2_SUBNET_MASK               "255.255.255.0"
-
-
-

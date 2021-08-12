@@ -18,6 +18,7 @@ Trying 172.17.0.1...
 Connected to 172.17.0.1.
 Escape character is '^]'.
 hello world
+hello world
 ```
 
 NOTE: For the escape character type 'Ctrl+AltGr+9'. Afterwards telnet can be exited with the 'close' or 'quit' command.

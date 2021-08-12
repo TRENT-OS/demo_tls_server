@@ -33,11 +33,35 @@ initNetworkClient(void)
 }
 
 static void
-processRxData(
-    void* const rxData,
-    const size_t len)
+echoRxData(
+    const OS_NetworkSocket_Handle_t hSocket,
+    const uint8_t* const bufRxData,
+    const size_t bufLen)
 {
-    Debug_LOG_INFO("TODO: process received data");
+    size_t sumLenTx = 0;
+
+    while (sumLenTx < bufLen)
+    {
+        size_t actualLenTx = 0;
+
+        OS_Error_t ret = OS_NetworkSocket_write(
+                            hSocket,
+                            &bufRxData[sumLenTx],
+                            bufLen - sumLenTx,
+                            &actualLenTx);
+
+        if (ret != OS_SUCCESS)
+        {
+            Debug_LOG_ERROR("OS_NetworkSocket_write() failed, error %d", ret);
+            break;
+        }
+
+        sumLenTx += actualLenTx;
+
+        Debug_LOG_INFO("OS_NetworkSocket_write() ok, send_desired: %zu, "
+                        "send_current: %zu, send_total: %zu",
+                        bufLen, actualLenTx, sumLenTx);
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -105,7 +129,7 @@ run(void)
                     "OS_NetworkSocket_read() received %zu bytes of data",
                     actualLenRx);
 
-                processRxData(rxData, actualLenRx);
+                echoRxData(hSocket, rxData, actualLenRx);
 
                 continue;
 

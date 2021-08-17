@@ -9,7 +9,7 @@
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-USAGE_STRING="run_demo.sh <path-to-project-build> <path-to-sdk>\n
+USAGE_STRING="run_demo.sh <path-to-project-build> <path-to-proxy>\n
 This script runs demo applications together with the proxy app.\n"
 
 if [ "$#" -lt "2" ]; then
@@ -18,7 +18,7 @@ if [ "$#" -lt "2" ]; then
 fi
 
 PROJECT_BUILD_PATH=$1
-SDK_PATH=$2
+PROXY_PATH=$2
 
 if [ -z ${PROJECT_BUILD_PATH} ]; then
     echo "ERROR: missing project build path"
@@ -33,9 +33,9 @@ if [ ! -f ${IMAGE_PATH} ]; then
 fi
 
 # create the path to the proxy application
-PROXY_BIN_PATH=${SDK_PATH}/bin/proxy_app
-if [ ! -f ${PROXY_BIN_PATH} ]; then
-    echo "ERROR: missing proxy application binary ${PROXY_BIN_PATH}"
+PROXY_BIN=${PROXY_PATH}/proxy_app
+if [ ! -f ${PROXY_BIN} ]; then
+    echo "ERROR: missing proxy application binary ${PROXY_BIN}"
     exit 1
 fi
 
@@ -61,7 +61,7 @@ qemu-system-arm ${QEMU_PARAMS[@]} $@ 2> qemu_stderr.txt &
 sleep 1
 
 # start proxy application
-${PROXY_BIN_PATH} -c TCP:4444 -t 1  > proxy_app.out &
+${PROXY_BIN} -c TCP:4444 -t 1  > proxy_app.out &
 sleep 1
 
 fg # trigger holding qemu

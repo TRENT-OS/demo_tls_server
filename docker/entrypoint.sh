@@ -6,7 +6,7 @@
 #
 #-------------------------------------------------------------------------------
 
-# Entrypoint script for the test container to be used for the demo_network_filter
+# Entrypoint script for the test container to be used for the demo_tls_server
 
 set -euxo pipefail
 

@@ -26,7 +26,6 @@ run(void)
         timeServer_notify_wait();
 
         // Send ticks to the connected Network Stack components.
-        e_timeout_nwstacktick1_emit();
-        e_timeout_nwstacktick2_emit();
+        e_timeout_nwstacktick_emit();
     }
 }

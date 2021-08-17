@@ -1,5 +1,5 @@
 /*
- * Main CAmkES file of the Network Filter Demo
+ * Main CAmkES file of the demo TLS Server
  *
  * Copyright (C) 2021, HENSOLDT Cyber GmbH
  */
@@ -9,14 +9,14 @@ import <std_connector.camkes>;
 #include "system_config.h"
 
 import "components/Ticker/Ticker.camkes";
-import "components/FilterListener/FilterListener.camkes";
+import "components/TlsServer/TlsServer.camkes";
 
 #include "os_network_stack/network_stack.camkes"
 
 NwStack_COMPONENT_DEFINE(
-    NwStack1,
+    NwStack,
     NIC_DRIVER_RINGBUFFER_SIZE,
-    NETWORK_STACK_1_NUM_SOCKETS,
+    NETWORK_STACK_NUM_SOCKETS,
     NwStack_NO_ADDITIONAL_INTERFACES)
 
 #include "TimeServer/camkes/TimeServer.camkes"
@@ -31,7 +31,7 @@ assembly {
         //----------------------------------------------------------------------
         // NIC Drivers
         //----------------------------------------------------------------------
-        FILTER_DEMO_NIC_INSTANCES(nwDriver1)
+        TLS_SERVER_NIC_INSTANCES(nwDriver)
 
         //----------------------------------------------------------------------
         // TimeServer
@@ -41,7 +41,7 @@ assembly {
         TimeServer_INSTANCE_CONNECT_CLIENTS(
             timeServer,
             ticker.timeServer_rpc,   ticker.timeServer_notify,
-            nwStack1.timeServer_rpc, nwStack1.timeServer_notify
+            nwStack.timeServer_rpc, nwStack.timeServer_notify
         )
 
         //----------------------------------------------------------------------
@@ -52,22 +52,22 @@ assembly {
         //----------------------------------------------------------------------
         // NwStack
         //----------------------------------------------------------------------
-        component NwStack1 nwStack1;
+        component NwStack nwStack;
 
         NwStack_INSTANCE_CONNECT(
-            nwStack1,
-            ticker.e_timeout_nwstacktick1,
-            nwDriver1
+            nwStack,
+            ticker.e_timeout_nwstacktick,
+            nwDriver
         )
 
         //----------------------------------------------------------------------
-        // Filter Listener
+        // TLS Server
         //----------------------------------------------------------------------
-        component FilterListener filterListener;
+        component TlsServer tlsServer;
 
         NwStack_INSTANCE_CONNECT_CLIENT(
-            nwStack1,
-            filterListener,
+            nwStack,
+            tlsServer,
             networkStack_rpc,
             // Since the Listener will handle incoming connections, it requires
             // a minimum of two sockets.
@@ -77,9 +77,9 @@ assembly {
     configuration {
         TimeServer_CLIENT_ASSIGN_BADGES(
             ticker.timeServer_rpc,
-            nwStack1.timeServer_rpc
+            nwStack.timeServer_rpc
         )
         // Platform specific configuration.
-        FILTER_DEMO_NIC_CONFIG(nwDriver1)
+        TLS_SERVER_NIC_CONFIG(nwDriver)
     }
 }

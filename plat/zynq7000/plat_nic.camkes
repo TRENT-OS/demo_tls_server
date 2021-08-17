@@ -9,25 +9,25 @@
 #include "ChanMux/ChanMux_UART.camkes"
 ChanMux_UART_COMPONENT_DEFINE(
     ChanMux_UART,
-    nwDriver1, ctrl,
-    nwDriver1, data
+    nwDriver, ctrl,
+    nwDriver, data
 )
 
 #include "NIC_ChanMux/NIC_ChanMux.camkes"
 NIC_ChanMux_COMPONENT_DEFINE(
-    NwDriver1,
+    NwDriver,
     NIC_DRIVER_RINGBUFFER_SIZE)
 
 
-#define FILTER_DEMO_NIC_INSTANCES(_nic1_) \
+#define TLS_SERVER_NIC_INSTANCES(_nic_) \
     component ChanMux_UART chanMux_UART; \
     component UART_CHANMUX uart; \
     ChanMux_UART_INSTANCE_CONNECT(chanMux_UART, uart) \
     \
-    component NwDriver1 _nic1_; \
-    ChanMux_INSTANCE_CONNECT_CLIENT(chanMux_UART, _nic1_, data, ctrl)
+    component NwDriver _nic_; \
+    ChanMux_INSTANCE_CONNECT_CLIENT(chanMux_UART, _nic_, data, ctrl)
 
-#define FILTER_DEMO_NIC_CONFIG(_nic1_) \
+#define TLS_SERVER_NIC_CONFIG(_nic_) \
     ChanMux_UART_CLIENT_ASSIGN_BADGES( \
-        _nic1_.chanMux_Rpc \
+        _nic_.chanMux_Rpc \
     )

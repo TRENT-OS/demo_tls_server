@@ -13,7 +13,7 @@ ChanMux_UART_DeclareCAmkESComponents(
 )
 
 NIC_ChanMux_DeclareCAmkESComponent(
-    NwDriver1
-    CHANMUX_CHANNEL_NIC_1_CTRL
-    CHANMUX_CHANNEL_NIC_1_DATA
+    NwDriver
+    CHANMUX_CHANNEL_NIC_CTRL
+    CHANMUX_CHANNEL_NIC_DATA
 )

@@ -1,5 +1,5 @@
 /*
- * Filter Listener
+ * TLS Server
  *
  * Copyright (C) 2021, HENSOLDT Cyber GmbH
  */
@@ -17,7 +17,7 @@
 static void
 initNetworkClient(void)
 {
-    static OS_Dataport_t dataports[FILTER_LISTENER_NUM_SOCKETS] =
+    static OS_Dataport_t dataports[TLS_SERVER_NUM_SOCKETS] =
     {
         OS_DATAPORT_ASSIGN(socket_1_port),
         OS_DATAPORT_ASSIGN(socket_2_port)
@@ -68,7 +68,7 @@ echoRxData(
 int
 run(void)
 {
-    Debug_LOG_INFO("Starting Filter Listener");
+    Debug_LOG_INFO("Starting TLS Server");
 
     initNetworkClient();
 
@@ -76,7 +76,7 @@ run(void)
     {
         .domain = OS_AF_INET,
         .type   = OS_SOCK_STREAM,
-        .listen_port = FILTER_LISTENER_PORT,
+        .listen_port = TLS_SERVER_PORT,
         .backlog   = 1
     };
 

@@ -1,5 +1,5 @@
 #
-# Demo Network Filter
+# Demo TLS Server
 #
 # Copyright (C) 2021, HENSOLDT Cyber GmbH
 #
@@ -12,7 +12,7 @@ os_set_config_file(
 )
 
 #-------------------------------------------------------------------------------
-project(demo_network_filter C)
+project(demo_tls_server C)
 
 # Overwrite the default log level of the lower layers to ERROR as the output
 # otherwise gets too cluttered with debug prints.
@@ -21,11 +21,11 @@ set(LibUtilsDefaultZfLogLevel 5 CACHE STRING "" FORCE)
 include("plat/${PLATFORM}/plat_nic.cmake")
 
 DeclareCAmkESComponent(
-    FilterListener
+    TlsServer
     INCLUDES
         protocol
     SOURCES
-        components/FilterListener/src/FilterListener.c
+        components/TlsServer/src/TlsServer.c
     C_FLAGS
         -Wall -Werror
     LIBS
@@ -37,16 +37,16 @@ DeclareCAmkESComponent(
 )
 
 DeclareCAmkESComponent(
-    NwStack1
+    NwStack
     SOURCES
         components/NwStack/src/NwStack.c
     C_FLAGS
         -Wall
         -Werror
-        -DNUM_SOCKETS=NETWORK_STACK_1_NUM_SOCKETS
-        -DCFG_ETH_ADDR=ETH_1_ADDR
-        -DCFG_ETH_GATEWAY_ADDR=ETH_1_GATEWAY_ADDR
-        -DCFG_ETH_SUBNET_MASK=ETH_1_SUBNET_MASK
+        -DNUM_SOCKETS=NETWORK_STACK_NUM_SOCKETS
+        -DCFG_ETH_ADDR=ETH_ADDR
+        -DCFG_ETH_GATEWAY_ADDR=ETH_GATEWAY_ADDR
+        -DCFG_ETH_SUBNET_MASK=ETH_SUBNET_MASK
     LIBS
         system_config
         os_core_api
@@ -71,5 +71,5 @@ TimeServer_DeclareCAmkESComponent(
     TimeServer
 )
 
-DeclareAndCreateCamkESSystem(DemoNetworkFilter.camkes)
+DeclareAndCreateCamkESSystem(DemoTlsServer.camkes)
 GenerateSimulateScript()

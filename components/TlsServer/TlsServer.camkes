@@ -1,19 +1,19 @@
 /*
- * Filter Listener
+ * TLS Server
  *
  * Copyright (C) 2021, HENSOLDT Cyber GmbH
  */
 
 import <if_OS_Socket.camkes>;
 
-component FilterListener {
+component TlsServer {
     control;
 
     //--------------------------------------------------------------------------
     // Networking
     uses if_OS_Socket networkStack_rpc;
 
-    // Since the Listener will handle incoming connections, it requires a
+    // Since the TLS server will handle incoming connections, it requires a
     // minimum of two sockets = two dataports.
     dataport Buf socket_1_port;
     dataport Buf socket_2_port;

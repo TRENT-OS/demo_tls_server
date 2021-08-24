@@ -14,6 +14,12 @@
 #include "OS_Network.h"
 #include "OS_NetworkStackClient.h"
 
+//! Maximum buffer size for send / receive functions.
+#define MAX_NW_SIZE OS_DATAPORT_DEFAULT_SIZE
+
+
+//------------------------------------------------------------------------------
+
 static void
 initNetworkClient(void)
 {
@@ -32,9 +38,70 @@ initNetworkClient(void)
     OS_NetworkStackClient_init(&config);
 }
 
+static int
+sendFunc(
+    void* ctx,
+    const unsigned char* buf,
+    size_t len)
+{
+    OS_NetworkSocket_Handle_t* socket = (OS_NetworkSocket_Handle_t*)ctx;
+    size_t n = len > MAX_NW_SIZE ? MAX_NW_SIZE : len;
+
+    OS_Error_t err = OS_NetworkSocket_write(*socket, buf, n, &n);
+
+    if (OS_SUCCESS != err)
+    {
+        Debug_LOG_ERROR("OS_NetworkSocket_write() failed, error %d", err);
+        n = -1;
+    }
+
+    return n;
+}
+
+static int
+recvFunc(
+    void* ctx,
+    unsigned char* buf,
+    size_t len)
+{
+    OS_NetworkSocket_Handle_t* socket = (OS_NetworkSocket_Handle_t*)ctx;
+    size_t n = len > MAX_NW_SIZE ? MAX_NW_SIZE : len;
+
+    OS_Error_t err = OS_NetworkSocket_read(*socket, buf, n, &n);
+
+    switch (err)
+    {
+    case OS_SUCCESS:
+        Debug_LOG_INFO(
+            "OS_NetworkSocket_read() received %zu bytes of data", n);
+        // n = n;
+        break;
+
+    case OS_ERROR_CONNECTION_CLOSED:
+        Debug_LOG_INFO(
+            "OS_NetworkSocket_read() reported connection closed");
+        n = 0;
+        break;
+
+    case OS_ERROR_NETWORK_CONN_SHUTDOWN:
+        Debug_LOG_INFO(
+            "OS_NetworkSocket_read() reported connection shutdown");
+        n = 0;
+        break;
+
+    default:
+        Debug_LOG_ERROR(
+            "OS_NetworkSocket_read() failed, error %d", err);
+        n = -1;
+        break;
+    }
+
+    return n;
+}
+
 static void
 echoRxData(
-    const OS_NetworkSocket_Handle_t hSocket,
+    OS_NetworkSocket_Handle_t hSocket,
     const uint8_t* const bufRxData,
     const size_t bufLen)
 {
@@ -42,29 +109,28 @@ echoRxData(
 
     while (sumLenTx < bufLen)
     {
-        size_t actualLenTx = 0;
+        int actualLenTx = sendFunc(
+            &hSocket,
+            &bufRxData[sumLenTx],
+            bufLen - sumLenTx);
 
-        OS_Error_t ret = OS_NetworkSocket_write(
-                            hSocket,
-                            &bufRxData[sumLenTx],
-                            bufLen - sumLenTx,
-                            &actualLenTx);
-
-        if (ret != OS_SUCCESS)
+        if (actualLenTx < 0)
         {
-            Debug_LOG_ERROR("OS_NetworkSocket_write() failed, error %d", ret);
+            Debug_LOG_ERROR("sendFunc() failed, error %d", actualLenTx);
             break;
         }
 
-        sumLenTx += actualLenTx;
+        sumLenTx += (size_t)actualLenTx;
 
-        Debug_LOG_INFO("OS_NetworkSocket_write() ok, send_desired: %zu, "
-                        "send_current: %zu, send_total: %zu",
+        Debug_LOG_INFO("sendFunc() ok, send_desired: %zu, "
+                        "send_current: %d, send_total: %zu",
                         bufLen, actualLenTx, sumLenTx);
     }
 }
 
+
 //------------------------------------------------------------------------------
+
 int
 run(void)
 {
@@ -92,7 +158,7 @@ run(void)
         return -1;
     }
 
-    static uint8_t rxData[OS_DATAPORT_DEFAULT_SIZE] = {0};
+    static uint8_t rxData[MAX_NW_SIZE] = {0};
 
     for (;;)
     {
@@ -110,42 +176,24 @@ run(void)
         }
 
         // Loop until an error occurs.
-        while (ret == OS_SUCCESS)
+        while (1)
         {
             Debug_LOG_INFO("Waiting for a new message");
 
-            size_t actualLenRx = 0;
+            int actualLenRx = recvFunc(&hSocket, rxData, sizeof(rxData));
 
-            ret = OS_NetworkSocket_read(
-                      hSocket,
-                      rxData,
-                      sizeof(rxData),
-                      &actualLenRx);
-
-            switch (ret)
+            if (actualLenRx > 0)
             {
-            case OS_SUCCESS:
-                Debug_LOG_INFO(
-                    "OS_NetworkSocket_read() received %zu bytes of data",
-                    actualLenRx);
-
-                echoRxData(hSocket, rxData, actualLenRx);
-
-                continue;
-
-            case OS_ERROR_CONNECTION_CLOSED:
-                Debug_LOG_INFO(
-                    "OS_NetworkSocket_read() reported connection closed");
+                echoRxData(hSocket, rxData, (size_t)actualLenRx);
+            }
+            else if (actualLenRx == 0)
+            {
+                Debug_LOG_INFO("Connection closed/shutdown.");
                 break;
-
-            case OS_ERROR_NETWORK_CONN_SHUTDOWN:
-                Debug_LOG_DEBUG(
-                    "OS_NetworkSocket_read() reported connection closed");
-                break;
-
-            default:
-                Debug_LOG_ERROR(
-                    "OS_NetworkSocket_read() failed, error %d", ret);
+            }
+            else
+            {
+                Debug_LOG_ERROR("Connection failed, error %d", actualLenRx);
                 break;
             }
         }

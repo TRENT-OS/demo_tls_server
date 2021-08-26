@@ -32,8 +32,8 @@ DeclareCAmkESComponent(
         system_config
         os_core_api
         lib_debug
-        os_crypto
         os_network_api
+        3rdparty_mbedtls_for_tls_server
 )
 
 DeclareCAmkESComponent(

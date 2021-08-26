@@ -14,6 +14,8 @@
 #include "OS_Network.h"
 #include "OS_NetworkStackClient.h"
 
+#include "mbedtls/ssl.h"
+
 //! Maximum buffer size for send / receive functions.
 #define MAX_NW_SIZE OS_DATAPORT_DEFAULT_SIZE
 

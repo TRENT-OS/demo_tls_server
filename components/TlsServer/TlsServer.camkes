@@ -4,10 +4,16 @@
  * Copyright (C) 2021, HENSOLDT Cyber GmbH
  */
 
+import <if_OS_Entropy.camkes>;
 import <if_OS_Socket.camkes>;
 
 component TlsServer {
     control;
+
+    //--------------------------------------------------------------------------
+    // EntropySource
+    uses     if_OS_Entropy entropy_rpc;
+    dataport Buf           entropy_port;
 
     //--------------------------------------------------------------------------
     // Networking

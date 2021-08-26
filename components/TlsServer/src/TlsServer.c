@@ -6,19 +6,28 @@
 
 #include "system_config.h"
 
+#include "lib_compiler/compiler.h"
 #include "lib_debug/Debug.h"
 #include <camkes.h>
 #include <string.h>
+
+#include "interfaces/if_OS_Entropy.h"
 
 #include "OS_Error.h"
 #include "OS_Network.h"
 #include "OS_NetworkStackClient.h"
 
+#include "mbedtls/certs.h"
+#include "mbedtls/ctr_drbg.h"
 #include "mbedtls/ssl.h"
+#include "mbedtls/debug.h"
+
+//------------------------------------------------------------------------------
 
 //! Maximum buffer size for send / receive functions.
 #define MAX_NW_SIZE OS_DATAPORT_DEFAULT_SIZE
 
+#define DEBUG_LEVEL 0
 
 //------------------------------------------------------------------------------
 
@@ -130,6 +139,78 @@ echoRxData(
     }
 }
 
+// This function is called by mbedTLS to log messages.
+static void
+logDebug(
+    void*       ctx,
+    int         level,
+    const char* file,
+    int         line,
+    const char* str)
+{
+    char msg[256];
+    UNUSED_VAR(ctx);
+    UNUSED_VAR(level);
+
+    if (level < 1 || level > 4)
+    {
+        return;
+    }
+
+    size_t len_file_name = strlen(file);
+    const size_t max_len_file = 16;
+    bool is_short_file_name = (len_file_name <= max_len_file);
+
+    snprintf(
+        msg,
+        sizeof(msg),
+        "[%s%s:%05i]: %s",
+        is_short_file_name ? "" : "...",
+        &file[ is_short_file_name ?  0 : len_file_name - max_len_file],
+        line,
+        str);
+
+    // Replace '\n' in mbedtls string with '\0' because otherwise it would
+    // result in extra empty lines because Debug_LOG_XXX adds another '\n'.
+    size_t msg_len = strlen(msg);
+    if (msg_len > 0 && msg[msg_len - 1] == '\n')
+    {
+        msg[msg_len - 1] = '\0';
+    }
+
+    // Translate mbedTLS level to appropriate debug output
+    switch (level)
+    {
+    case 1: // Error
+        Debug_LOG_ERROR("%s", msg);
+        break;
+    case 2: // State change
+    case 3: // Informational
+        Debug_LOG_INFO("%s", msg);
+        break;
+    case 4: // Verbose
+        Debug_LOG_DEBUG("%s", msg);
+        break;
+    default:
+        // Do nothing
+        break;
+    }
+}
+
+static int
+entropyWrapper(
+    void*          ctx,
+    unsigned char* buf,
+    size_t         len)
+{
+    if_OS_Entropy_t* entropy = (if_OS_Entropy_t*)ctx;
+
+    size_t s = entropy->read(len);
+    memcpy(buf, OS_Dataport_getBuf(entropy->dataport), s);
+
+    // If we cannot return as many bytes as requested, produce an error
+    return (s == len) ? 0 : -1;
+}
 
 //------------------------------------------------------------------------------
 
@@ -140,7 +221,7 @@ run(void)
 
     initNetworkClient();
 
-    OS_NetworkServer_Socket_t tcp_socket =
+    OS_NetworkServer_Socket_t tcpSocket =
     {
         .domain = OS_AF_INET,
         .type   = OS_SOCK_STREAM,
@@ -149,16 +230,128 @@ run(void)
     };
 
     OS_NetworkServer_Handle_t hServer;
-    OS_Error_t ret = OS_NetworkServerSocket_create(
+    OS_Error_t err = OS_NetworkServerSocket_create(
                         NULL,
-                        &tcp_socket,
+                        &tcpSocket,
                         &hServer);
 
-    if (ret != OS_SUCCESS)
+    if (err != OS_SUCCESS)
     {
-        Debug_LOG_ERROR("OS_NetworkServerSocket_create() failed, code %d", ret);
+        Debug_LOG_ERROR("OS_NetworkServerSocket_create() failed, code %d", err);
         return -1;
     }
+
+    // -------------------------------------------------------------------------
+    // Init mbedtls
+
+    mbedtls_ctr_drbg_context ctr_drbg;
+    mbedtls_ctr_drbg_init( &ctr_drbg );
+
+    mbedtls_ssl_context ssl;
+    mbedtls_ssl_init( &ssl );
+
+    mbedtls_ssl_config conf;
+    mbedtls_ssl_config_init( &conf );
+
+    mbedtls_x509_crt srvcert;
+    mbedtls_x509_crt_init( &srvcert );
+
+    mbedtls_pk_context pkey;
+    mbedtls_pk_init( &pkey );
+
+    mbedtls_debug_set_threshold( DEBUG_LEVEL );
+
+    // -------------------------------------------------------------------------
+    // Init entropy source
+
+    if_OS_Entropy_t entropy = IF_OS_ENTROPY_ASSIGN(
+                                entropy_rpc,
+                                entropy_port);
+
+    // -------------------------------------------------------------------------
+    // Load the certificates and private RSA key
+
+    Debug_LOG_INFO( "  . Loading the server cert. and key..." );
+
+    int ret = mbedtls_x509_crt_parse( &srvcert, (const unsigned char *) mbedtls_test_srv_crt,
+                          mbedtls_test_srv_crt_len );
+    if( ret != 0 )
+    {
+        Debug_LOG_ERROR( "  . failed  !  mbedtls_x509_crt_parse returned %d", ret );
+        return -1;
+    }
+
+    ret = mbedtls_x509_crt_parse( &srvcert, (const unsigned char *) mbedtls_test_cas_pem,
+                          mbedtls_test_cas_pem_len );
+    if( ret != 0 )
+    {
+        Debug_LOG_ERROR( "  . failed  !  mbedtls_x509_crt_parse returned %d", ret );
+        return -1;
+    }
+
+    ret = mbedtls_pk_parse_key( &pkey, (const unsigned char *) mbedtls_test_srv_key,
+                         mbedtls_test_srv_key_len, NULL, 0 );
+    if( ret != 0 )
+    {
+        Debug_LOG_ERROR( "  . failed  !  mbedtls_pk_parse_key returned %d", ret );
+        return -1;
+    }
+
+    Debug_LOG_INFO( "  . ok" );
+
+    // -------------------------------------------------------------------------
+    // Seed the RNG
+
+    Debug_LOG_INFO( "  . Seeding the random number generator..." );
+
+    const char * pers = "ssl_server";
+
+    if( ( ret = mbedtls_ctr_drbg_seed( &ctr_drbg, entropyWrapper, &entropy,
+                               (const unsigned char *) pers,
+                               strlen( pers ) ) ) != 0 )
+    {
+        Debug_LOG_ERROR( "  . failed  ! mbedtls_ctr_drbg_seed returned %d", ret );
+        return -1;
+    }
+
+    Debug_LOG_INFO( "  . ok" );
+
+    // -------------------------------------------------------------------------
+    // Setup stuff
+
+    Debug_LOG_INFO( "  . Setting up the SSL data...." );
+
+    if( ( ret = mbedtls_ssl_config_defaults( &conf,
+                    MBEDTLS_SSL_IS_SERVER,
+                    MBEDTLS_SSL_TRANSPORT_STREAM,
+                    MBEDTLS_SSL_PRESET_DEFAULT ) ) != 0 )
+    {
+        Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_config_defaults returned %d", ret );
+        return -1;
+    }
+
+    mbedtls_ssl_conf_rng( &conf, mbedtls_ctr_drbg_random, &ctr_drbg );
+    mbedtls_ssl_conf_dbg(&conf, logDebug, NULL);
+
+    mbedtls_ssl_conf_ca_chain( &conf, srvcert.next, NULL );
+
+    if( ( ret = mbedtls_ssl_conf_own_cert( &conf, &srvcert, &pkey ) ) != 0 )
+    {
+        Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_conf_own_cert returned %d", ret );
+        return -1;
+    }
+
+    if( ( ret = mbedtls_ssl_setup( &ssl, &conf ) ) != 0 )
+    {
+        Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_setup returned %d", ret );
+        return -1;
+    }
+
+    Debug_LOG_INFO( "  . ok" );
+
+    mbedtls_ssl_session_reset( &ssl );
+
+    // -------------------------------------------------------------------------
 
     static uint8_t rxData[MAX_NW_SIZE] = {0};
 
@@ -166,14 +359,14 @@ run(void)
     {
         Debug_LOG_INFO("Accepting new connection");
         OS_NetworkSocket_Handle_t hSocket;
-        ret = OS_NetworkServerSocket_accept(
+        err = OS_NetworkServerSocket_accept(
                   hServer,
                   &hSocket);
 
-        if (ret != OS_SUCCESS)
+        if (err != OS_SUCCESS)
         {
             Debug_LOG_ERROR("OS_NetworkServerSocket_accept() failed, error %d",
-                            ret);
+                            err);
             return -1;
         }
 

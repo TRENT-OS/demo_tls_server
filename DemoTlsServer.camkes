@@ -19,6 +19,9 @@ NwStack_COMPONENT_DEFINE(
     NETWORK_STACK_NUM_SOCKETS,
     NwStack_NO_ADDITIONAL_INTERFACES)
 
+#include "EntropySource/camkes/EntropySource.camkes"
+EntropySource_COMPONENT_DEFINE(EntropySource)
+
 #include "TimeServer/camkes/TimeServer.camkes"
 TimeServer_COMPONENT_DEFINE(TimeServer)
 
@@ -73,6 +76,16 @@ assembly {
             // a minimum of two sockets.
             socket_1_port,
             socket_2_port)
+
+        //----------------------------------------------------------------------
+        // EntropySource
+        //----------------------------------------------------------------------
+        component EntropySource entropySource;
+
+        EntropySource_INSTANCE_CONNECT_CLIENT(
+            entropySource,
+            tlsServer.entropy_rpc,
+            tlsServer.entropy_port)
     }
     configuration {
         TimeServer_CLIENT_ASSIGN_BADGES(

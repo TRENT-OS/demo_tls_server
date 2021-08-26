@@ -31,6 +31,7 @@ DeclareCAmkESComponent(
     LIBS
         system_config
         os_core_api
+        lib_compiler
         lib_debug
         os_network_api
         3rdparty_mbedtls_for_tls_server
@@ -69,6 +70,10 @@ DeclareCAmkESComponent(
 
 TimeServer_DeclareCAmkESComponent(
     TimeServer
+)
+
+EntropySource_DeclareCAmkESComponent(
+    EntropySource
 )
 
 DeclareAndCreateCamkESSystem(DemoTlsServer.camkes)

@@ -253,7 +253,7 @@ run(void)
                           mbedtls_test_srv_crt_len );
     if( ret != 0 )
     {
-        Debug_LOG_ERROR( "  . failed  !  mbedtls_x509_crt_parse returned %d", ret );
+        Debug_LOG_ERROR( "  . failed  !  mbedtls_x509_crt_parse returned -0x%04X", -ret );
         return -1;
     }
 
@@ -261,7 +261,7 @@ run(void)
                           mbedtls_test_cas_pem_len );
     if( ret != 0 )
     {
-        Debug_LOG_ERROR( "  . failed  !  mbedtls_x509_crt_parse returned %d", ret );
+        Debug_LOG_ERROR( "  . failed  !  mbedtls_x509_crt_parse returned -0x%04X", -ret );
         return -1;
     }
 
@@ -269,7 +269,7 @@ run(void)
                          mbedtls_test_srv_key_len, NULL, 0 );
     if( ret != 0 )
     {
-        Debug_LOG_ERROR( "  . failed  !  mbedtls_pk_parse_key returned %d", ret );
+        Debug_LOG_ERROR( "  . failed  !  mbedtls_pk_parse_key returned -0x%04X", -ret );
         return -1;
     }
 
@@ -286,7 +286,7 @@ run(void)
                                (const unsigned char *) pers,
                                strlen( pers ) ) ) != 0 )
     {
-        Debug_LOG_ERROR( "  . failed  ! mbedtls_ctr_drbg_seed returned %d", ret );
+        Debug_LOG_ERROR( "  . failed  ! mbedtls_ctr_drbg_seed returned -0x%04X", -ret );
         return -1;
     }
 
@@ -302,7 +302,7 @@ run(void)
                     MBEDTLS_SSL_TRANSPORT_STREAM,
                     MBEDTLS_SSL_PRESET_DEFAULT ) ) != 0 )
     {
-        Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_config_defaults returned %d", ret );
+        Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_config_defaults returned -0x%04X", -ret );
         return -1;
     }
 
@@ -313,13 +313,13 @@ run(void)
 
     if( ( ret = mbedtls_ssl_conf_own_cert( &conf, &srvcert, &pkey ) ) != 0 )
     {
-        Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_conf_own_cert returned %d", ret );
+        Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_conf_own_cert returned -0x%04X", -ret );
         return -1;
     }
 
     if( ( ret = mbedtls_ssl_setup( &ssl, &conf ) ) != 0 )
     {
-        Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_setup returned %d", ret );
+        Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_setup returned -0x%04X", -ret );
         return -1;
     }
 
@@ -391,7 +391,7 @@ run(void)
                         break;
 
                     default:
-                        Debug_LOG_ERROR( "  . mbedtls_ssl_read returned -0x%x", -ret );
+                        Debug_LOG_ERROR( "  . mbedtls_ssl_read returned -0x%04X", -ret );
                         break;
                 }
 

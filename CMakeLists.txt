@@ -23,7 +23,7 @@ include("plat/${PLATFORM}/plat_nic.cmake")
 DeclareCAmkESComponent(
     TlsServer
     INCLUDES
-        protocol
+        components/TlsServer/include
     SOURCES
         components/TlsServer/src/TlsServer.c
     C_FLAGS

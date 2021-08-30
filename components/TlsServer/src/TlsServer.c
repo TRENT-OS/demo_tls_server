@@ -4,6 +4,7 @@
  * Copyright (C) 2021, HENSOLDT Cyber GmbH
  */
 
+#include "TlsServerCerts.h"
 #include "system_config.h"
 
 #include "lib_compiler/compiler.h"
@@ -33,6 +34,17 @@
     "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n" \
     "<h2>mbed TLS Test Server</h2>\r\n" \
     "<p>Successful connection using: %s</p>\r\n"
+
+//------------------------------------------------------------------------------
+
+static const char mTlsServerRootCert[] = TLS_SERVER_ROOT_CERT;
+static const size_t mTlsServerRootCertLen = sizeof( mTlsServerRootCert );
+
+static const char mTlsServerCert[] = TLS_SERVER_CERT;
+static const size_t mTlsServerCertLen = sizeof( mTlsServerCert );
+
+static const char mTlsServerKey[] = TLS_SERVER_KEY;
+static const size_t mTlsServerKeyLen = sizeof( mTlsServerKey );
 
 //------------------------------------------------------------------------------
 
@@ -249,24 +261,24 @@ run(void)
 
     Debug_LOG_INFO( "  . Loading the server cert. and key..." );
 
-    int ret = mbedtls_x509_crt_parse( &srvcert, (const unsigned char *) mbedtls_test_srv_crt,
-                          mbedtls_test_srv_crt_len );
+    int ret = mbedtls_x509_crt_parse( &srvcert, (const unsigned char *) mTlsServerCert,
+                          mTlsServerCertLen );
     if( ret != 0 )
     {
         Debug_LOG_ERROR( "  . failed  !  mbedtls_x509_crt_parse returned -0x%04X", -ret );
         return -1;
     }
 
-    ret = mbedtls_x509_crt_parse( &srvcert, (const unsigned char *) mbedtls_test_cas_pem,
-                          mbedtls_test_cas_pem_len );
+    ret = mbedtls_x509_crt_parse( &srvcert, (const unsigned char *) mTlsServerRootCert,
+                          mTlsServerRootCertLen );
     if( ret != 0 )
     {
         Debug_LOG_ERROR( "  . failed  !  mbedtls_x509_crt_parse returned -0x%04X", -ret );
         return -1;
     }
 
-    ret = mbedtls_pk_parse_key( &pkey, (const unsigned char *) mbedtls_test_srv_key,
-                         mbedtls_test_srv_key_len, NULL, 0 );
+    ret = mbedtls_pk_parse_key( &pkey, (const unsigned char *) mTlsServerKey,
+                         mTlsServerKeyLen, NULL, 0 );
     if( ret != 0 )
     {
         Debug_LOG_ERROR( "  . failed  !  mbedtls_pk_parse_key returned -0x%04X", -ret );

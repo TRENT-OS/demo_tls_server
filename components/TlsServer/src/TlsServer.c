@@ -117,13 +117,13 @@ recvFunc(
     case OS_ERROR_CONNECTION_CLOSED:
         Debug_LOG_INFO(
             "OS_NetworkSocket_read() reported connection closed");
-        n = 0;
+        n = -1;
         break;
 
     case OS_ERROR_NETWORK_CONN_SHUTDOWN:
         Debug_LOG_INFO(
             "OS_NetworkSocket_read() reported connection shutdown");
-        n = 0;
+        n = -1;
         break;
 
     default:

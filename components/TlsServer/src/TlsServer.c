@@ -29,6 +29,11 @@
 
 #define DEBUG_LEVEL 0
 
+#define HTTP_RESPONSE \
+    "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n" \
+    "<h2>mbed TLS Test Server</h2>\r\n" \
+    "<p>Successful connection using: %s</p>\r\n"
+
 //------------------------------------------------------------------------------
 
 static void
@@ -108,35 +113,6 @@ recvFunc(
     }
 
     return n;
-}
-
-static void
-echoRxData(
-    OS_NetworkSocket_Handle_t hSocket,
-    const uint8_t* const bufRxData,
-    const size_t bufLen)
-{
-    size_t sumLenTx = 0;
-
-    while (sumLenTx < bufLen)
-    {
-        int actualLenTx = sendFunc(
-            &hSocket,
-            &bufRxData[sumLenTx],
-            bufLen - sumLenTx);
-
-        if (actualLenTx < 0)
-        {
-            Debug_LOG_ERROR("sendFunc() failed, error %d", actualLenTx);
-            break;
-        }
-
-        sumLenTx += (size_t)actualLenTx;
-
-        Debug_LOG_INFO("sendFunc() ok, send_desired: %zu, "
-                        "send_current: %d, send_total: %zu",
-                        bufLen, actualLenTx, sumLenTx);
-    }
 }
 
 // This function is called by mbedTLS to log messages.
@@ -349,15 +325,15 @@ run(void)
 
     Debug_LOG_INFO( "  . ok" );
 
-    mbedtls_ssl_session_reset( &ssl );
-
-    // -------------------------------------------------------------------------
-
-    static uint8_t rxData[MAX_NW_SIZE] = {0};
-
     for (;;)
     {
-        Debug_LOG_INFO("Accepting new connection");
+        mbedtls_ssl_session_reset( &ssl );
+
+        // ---------------------------------------------------------------------
+        // Wait until a client connects
+
+        Debug_LOG_INFO( "  . Waiting for a remote connection ..." );
+
         OS_NetworkSocket_Handle_t hSocket;
         err = OS_NetworkServerSocket_accept(
                   hServer,
@@ -365,35 +341,111 @@ run(void)
 
         if (err != OS_SUCCESS)
         {
-            Debug_LOG_ERROR("OS_NetworkServerSocket_accept() failed, error %d",
-                            err);
-            return -1;
+            Debug_LOG_ERROR("OS_NetworkServerSocket_accept() failed, error %d", err);
+            goto exit;
         }
 
-        // Loop until an error occurs.
-        while (1)
+        mbedtls_ssl_set_bio( &ssl, &hSocket, sendFunc, recvFunc, NULL );
+
+        Debug_LOG_INFO( "  . ok" );
+
+        // ---------------------------------------------------------------------
+        // Handshake
+
+        Debug_LOG_INFO( "  . Performing the SSL/TLS handshake..." );
+
+        while( ( ret = mbedtls_ssl_handshake( &ssl ) ) != 0 )
         {
-            Debug_LOG_INFO("Waiting for a new message");
-
-            int actualLenRx = recvFunc(&hSocket, rxData, sizeof(rxData));
-
-            if (actualLenRx > 0)
+            if( ret != MBEDTLS_ERR_SSL_WANT_READ
+                && ret != MBEDTLS_ERR_SSL_WANT_WRITE )
             {
-                echoRxData(hSocket, rxData, (size_t)actualLenRx);
-            }
-            else if (actualLenRx == 0)
-            {
-                Debug_LOG_INFO("Connection closed/shutdown.");
-                break;
-            }
-            else
-            {
-                Debug_LOG_ERROR("Connection failed, error %d", actualLenRx);
-                break;
+                Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_handshake returned -0x%04X", -ret );
+                goto exit;
             }
         }
 
+        Debug_LOG_INFO( "  . ok" );
+
+        // ---------------------------------------------------------------------
+        // Read the HTTP request
+        int len;
+        unsigned char buf[1024];
+
+        Debug_LOG_INFO( "  .  < Read from client:" );
+
+        for (;;)
+        {
+            len = sizeof( buf ) - 1;
+            memset( buf, 0, sizeof( buf ) );
+            ret = mbedtls_ssl_read( &ssl, buf, len );
+
+            if( ret == MBEDTLS_ERR_SSL_WANT_READ )
+                continue;
+
+            if( ret <= 0 )
+            {
+                switch( ret )
+                {
+                    case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
+                        Debug_LOG_INFO( "  . connection was closed gracefully" );
+                        break;
+
+                    default:
+                        Debug_LOG_ERROR( "  . mbedtls_ssl_read returned -0x%x", -ret );
+                        break;
+                }
+
+                break;
+            }
+
+            len = ret;
+            Debug_LOG_INFO( "  . %d bytes read %s", len, (char *) buf );
+
+            if( ret > 0 )
+                break;
+        }
+
+        // ---------------------------------------------------------------------
+        // Write the 200 response
+
+        Debug_LOG_INFO( "  .  > Write to client:" );
+
+        len = sprintf( (char *) buf, HTTP_RESPONSE,
+                            mbedtls_ssl_get_ciphersuite( &ssl ) );
+
+        while( ( ret = mbedtls_ssl_write( &ssl, buf, len ) ) <= 0 )
+        {
+            if( ret != MBEDTLS_ERR_SSL_WANT_WRITE )
+            {
+                Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_write returned -0x%04X", -ret );
+                goto exit;
+            }
+        }
+
+        len = ret;
+        Debug_LOG_INFO( "  . %d bytes written %s", len, (char *) buf );
+
+        // ---------------------------------------------------------------------
+        // Close connection
+
+        Debug_LOG_INFO( "  . Closing the connection..." );
+
+        while( ( ret = mbedtls_ssl_close_notify( &ssl ) ) < 0 )
+        {
+            if( ret != MBEDTLS_ERR_SSL_WANT_READ
+                && ret != MBEDTLS_ERR_SSL_WANT_WRITE )
+            {
+                Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_close_notify returned -0x%04X", -ret );
+                goto exit;
+            }
+        }
+
+exit:
         OS_NetworkSocket_close(hSocket);
+
+        Debug_LOG_INFO( "  . ok" );
+
+        // ---------------------------------------------------------------------
     }
 
     return 0;

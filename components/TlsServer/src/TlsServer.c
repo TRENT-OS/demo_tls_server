@@ -104,6 +104,11 @@ recvFunc(
     OS_NetworkSocket_Handle_t* socket = (OS_NetworkSocket_Handle_t*)ctx;
     size_t n = len > MAX_NW_SIZE ? MAX_NW_SIZE : len;
 
+    // TODO: Check if we currently receiving less data than requested or if we
+    // are only supporting the "happy path".
+    // TODO: Consider returning MBEDTLS_ERR_SSL_WANT_WRITE as this is described
+    // at the definition of mbedtls_ssl_send_t.
+
     OS_Error_t err = OS_NetworkSocket_read(*socket, buf, n, &n);
 
     switch (err)

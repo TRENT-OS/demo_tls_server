@@ -37,14 +37,23 @@
 
 //------------------------------------------------------------------------------
 
-static const char mTlsServerRootCert[] = TLS_SERVER_ROOT_CERT;
-static const size_t mTlsServerRootCertLen = sizeof( mTlsServerRootCert );
+static const char cTlsServerRootCert[] = TLS_SERVER_ROOT_CERT;
+static const size_t cTlsServerRootCertLen = sizeof( cTlsServerRootCert );
 
-static const char mTlsServerCert[] = TLS_SERVER_CERT;
-static const size_t mTlsServerCertLen = sizeof( mTlsServerCert );
+static const char cTlsServerCert[] = TLS_SERVER_CERT;
+static const size_t cTlsServerCertLen = sizeof( cTlsServerCert );
 
-static const char mTlsServerKey[] = TLS_SERVER_KEY;
-static const size_t mTlsServerKeyLen = sizeof( mTlsServerKey );
+static const char cTlsServerKey[] = TLS_SERVER_KEY;
+static const size_t cTlsServerKeyLen = sizeof( cTlsServerKey );
+
+static const int cCipherSuites[] =
+{
+    MBEDTLS_TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
+    MBEDTLS_TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+    MBEDTLS_TLS_RSA_WITH_AES_128_CBC_SHA,
+
+    0 // list needs to be 0 terminated
+};
 
 //------------------------------------------------------------------------------
 
@@ -261,24 +270,24 @@ run(void)
 
     Debug_LOG_INFO( "  . Loading the server cert. and key..." );
 
-    int ret = mbedtls_x509_crt_parse( &srvcert, (const unsigned char *) mTlsServerCert,
-                          mTlsServerCertLen );
+    int ret = mbedtls_x509_crt_parse( &srvcert, (const unsigned char *) cTlsServerCert,
+                          cTlsServerCertLen );
     if( ret != 0 )
     {
         Debug_LOG_ERROR( "  . failed  !  mbedtls_x509_crt_parse returned -0x%04X", -ret );
         return -1;
     }
 
-    ret = mbedtls_x509_crt_parse( &srvcert, (const unsigned char *) mTlsServerRootCert,
-                          mTlsServerRootCertLen );
+    ret = mbedtls_x509_crt_parse( &srvcert, (const unsigned char *) cTlsServerRootCert,
+                          cTlsServerRootCertLen );
     if( ret != 0 )
     {
         Debug_LOG_ERROR( "  . failed  !  mbedtls_x509_crt_parse returned -0x%04X", -ret );
         return -1;
     }
 
-    ret = mbedtls_pk_parse_key( &pkey, (const unsigned char *) mTlsServerKey,
-                         mTlsServerKeyLen, NULL, 0 );
+    ret = mbedtls_pk_parse_key( &pkey, (const unsigned char *) cTlsServerKey,
+                         cTlsServerKeyLen, NULL, 0 );
     if( ret != 0 )
     {
         Debug_LOG_ERROR( "  . failed  !  mbedtls_pk_parse_key returned -0x%04X", -ret );
@@ -320,6 +329,9 @@ run(void)
 
     // Enable client authentication, i.e. client needs to provide a certificate.
     mbedtls_ssl_conf_authmode( &conf, MBEDTLS_SSL_VERIFY_REQUIRED );
+
+    // Set allowed cipher suites.
+    mbedtls_ssl_conf_ciphersuites( &conf, cCipherSuites );
 
     mbedtls_ssl_conf_rng( &conf, mbedtls_ctr_drbg_random, &ctr_drbg );
     mbedtls_ssl_conf_dbg(&conf, logDebug, NULL);

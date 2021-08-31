@@ -369,7 +369,7 @@ run(void)
         if (err != OS_SUCCESS)
         {
             Debug_LOG_ERROR("OS_NetworkServerSocket_accept() failed, error %d", err);
-            goto exit;
+            continue;
         }
 
         mbedtls_ssl_set_bio( &ssl, &hSocket, sendFunc, recvFunc, NULL );

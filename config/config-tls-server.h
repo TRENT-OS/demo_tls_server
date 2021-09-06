@@ -20,6 +20,7 @@
 
 #define MBEDTLS_MD_C
 #define MBEDTLS_MD5_C
+#define MBEDTLS_SHA1_C // Required for cipher suite MBEDTLS_TLS_RSA_WITH_AES_128_CBC_SHA
 #define MBEDTLS_SHA256_C
 
 #define MBEDTLS_CIPHER_C
@@ -49,6 +50,7 @@
 #define MBEDTLS_SSL_SRV_C // Required for TLS server (library/ssl_srv.c)
 #define MBEDTLS_SSL_TLS_C
 
+#define MBEDTLS_KEY_EXCHANGE_RSA_ENABLED // Required for cipher suite MBEDTLS_TLS_RSA_WITH_AES_128_CBC_SHA
 #define MBEDTLS_KEY_EXCHANGE_DHE_RSA_ENABLED
 #define MBEDTLS_KEY_EXCHANGE_ECDHE_RSA_ENABLED
 

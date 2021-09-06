@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, HENSOLDT Cyber GmbH
+ * Copyright (C) 2021, HENSOLDT Cyber GmbH
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -16,9 +16,8 @@
 #define MBEDTLS_PLATFORM_C
 #define MBEDTLS_PLATFORM_MEMORY
 
-/*
- * These we need for the CRYPTO API
- */
+//------------------------------------------------------------------------------
+
 #define MBEDTLS_MD_C
 #define MBEDTLS_MD5_C
 #define MBEDTLS_SHA256_C
@@ -44,11 +43,10 @@
 
 #define MBEDTLS_DHM_C
 
-/*
- * These we need for the TLS API and CERT PARSER
- */
+//------------------------------------------------------------------------------
+
 #define MBEDTLS_SSL_PROTO_TLS1_2
-#define MBEDTLS_SSL_CLI_C
+#define MBEDTLS_SSL_SRV_C // Required for TLS server (library/ssl_srv.c)
 #define MBEDTLS_SSL_TLS_C
 
 #define MBEDTLS_KEY_EXCHANGE_DHE_RSA_ENABLED

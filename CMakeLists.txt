@@ -20,46 +20,46 @@ os_set_config_file(
 project(mbedtls_for_tls_server C)
 
 # Relative path to the mbedTLS library.
-set(MBEDTLS_PATH_RELATIVE "../../../seos_sandbox/libs/3rdParty/mbedtls")
+set(MBEDTLS_PATH "${OS_SDK_DIR}/libs/3rdParty/mbedtls")
 
 # Sources for TLS server builds
 set(SOURCES_TLS_SERVER
-    "${MBEDTLS_PATH_RELATIVE}/library/aes.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/asn1parse.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/base64.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/bignum.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/cipher_wrap.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/cipher.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/ctr_drbg.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/debug.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/dhm.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/ecdh.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/ecp_curves.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/ecp.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/error.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/gcm.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/md_wrap.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/md.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/md5.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/oid.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/pem.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/pk_wrap.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/pk.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/pkparse.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/platform_util.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/platform.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/rsa_internal.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/rsa.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/sha1.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/sha256.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/ssl_ciphersuites.c"
-    #"${MBEDTLS_PATH_RELATIVE}/library/ssl_cli.c"
-    #"${MBEDTLS_PATH_RELATIVE}/library/ssl_cookie.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/ssl_srv.c"
-    #"${MBEDTLS_PATH_RELATIVE}/library/ssl_ticket.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/ssl_tls.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/x509_crt.c"
-    "${MBEDTLS_PATH_RELATIVE}/library/x509.c"
+    "${MBEDTLS_PATH}/library/aes.c"
+    "${MBEDTLS_PATH}/library/asn1parse.c"
+    "${MBEDTLS_PATH}/library/base64.c"
+    "${MBEDTLS_PATH}/library/bignum.c"
+    "${MBEDTLS_PATH}/library/cipher_wrap.c"
+    "${MBEDTLS_PATH}/library/cipher.c"
+    "${MBEDTLS_PATH}/library/ctr_drbg.c"
+    "${MBEDTLS_PATH}/library/debug.c"
+    "${MBEDTLS_PATH}/library/dhm.c"
+    "${MBEDTLS_PATH}/library/ecdh.c"
+    "${MBEDTLS_PATH}/library/ecp_curves.c"
+    "${MBEDTLS_PATH}/library/ecp.c"
+    "${MBEDTLS_PATH}/library/error.c"
+    "${MBEDTLS_PATH}/library/gcm.c"
+    "${MBEDTLS_PATH}/library/md_wrap.c"
+    "${MBEDTLS_PATH}/library/md.c"
+    "${MBEDTLS_PATH}/library/md5.c"
+    "${MBEDTLS_PATH}/library/oid.c"
+    "${MBEDTLS_PATH}/library/pem.c"
+    "${MBEDTLS_PATH}/library/pk_wrap.c"
+    "${MBEDTLS_PATH}/library/pk.c"
+    "${MBEDTLS_PATH}/library/pkparse.c"
+    "${MBEDTLS_PATH}/library/platform_util.c"
+    "${MBEDTLS_PATH}/library/platform.c"
+    "${MBEDTLS_PATH}/library/rsa_internal.c"
+    "${MBEDTLS_PATH}/library/rsa.c"
+    "${MBEDTLS_PATH}/library/sha1.c"
+    "${MBEDTLS_PATH}/library/sha256.c"
+    "${MBEDTLS_PATH}/library/ssl_ciphersuites.c"
+    #"${MBEDTLS_PATH}/library/ssl_cli.c"
+    #"${MBEDTLS_PATH}/library/ssl_cookie.c"
+    "${MBEDTLS_PATH}/library/ssl_srv.c"
+    #"${MBEDTLS_PATH}/library/ssl_ticket.c"
+    "${MBEDTLS_PATH}/library/ssl_tls.c"
+    "${MBEDTLS_PATH}/library/x509_crt.c"
+    "${MBEDTLS_PATH}/library/x509.c"
 )
 
 add_library(${PROJECT_NAME} INTERFACE)
@@ -71,7 +71,7 @@ target_sources(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME}
     INTERFACE
-        "${MBEDTLS_PATH_RELATIVE}/include"
+        "${MBEDTLS_PATH}/include"
 )
 
 target_compile_options(${PROJECT_NAME}

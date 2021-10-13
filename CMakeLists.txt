@@ -108,7 +108,7 @@ DeclareCAmkESComponent(
         os_core_api
         lib_compiler
         lib_debug
-        os_network_api
+        os_network
         mbedtls_for_tls_server
 )
 

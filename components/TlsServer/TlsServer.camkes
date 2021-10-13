@@ -4,8 +4,11 @@
  * Copyright (C) 2021, HENSOLDT Cyber GmbH
  */
 
+#pragma once
+
+#include "if_OS_Socket.camkes"
+
 import <if_OS_Entropy.camkes>;
-import <if_OS_Socket.camkes>;
 
 component TlsServer {
     control;
@@ -17,10 +20,5 @@ component TlsServer {
 
     //--------------------------------------------------------------------------
     // Networking
-    uses if_OS_Socket networkStack_rpc;
-
-    // Since the TLS server will handle incoming connections, it requires a
-    // minimum of two sockets = two dataports.
-    dataport Buf socket_1_port;
-    dataport Buf socket_2_port;
+    IF_OS_SOCKET_USE(networkStack)
 }

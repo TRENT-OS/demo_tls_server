@@ -8,16 +8,13 @@ import <std_connector.camkes>;
 
 #include "system_config.h"
 
-import "components/Ticker/Ticker.camkes";
-import "components/TlsServer/TlsServer.camkes";
+#include "components/TlsServer/TlsServer.camkes"
 
-#include "os_network_stack/network_stack.camkes"
-
-NwStack_COMPONENT_DEFINE(
+#include "NetworkStack_PicoTcp/camkes/NetworkStack_PicoTcp.camkes"
+NetworkStack_PicoTcp_COMPONENT_DEFINE(
     NwStack,
     NIC_DRIVER_RINGBUFFER_SIZE,
-    NETWORK_STACK_NUM_SOCKETS,
-    NwStack_NO_ADDITIONAL_INTERFACES)
+    NetworkStack_PicoTcp_NO_ADDITIONAL_INTERFACES)
 
 #include "EntropySource/camkes/EntropySource.camkes"
 EntropySource_COMPONENT_DEFINE(EntropySource)
@@ -43,23 +40,16 @@ assembly {
 
         TimeServer_INSTANCE_CONNECT_CLIENTS(
             timeServer,
-            ticker.timeServer_rpc,   ticker.timeServer_notify,
             nwStack.timeServer_rpc, nwStack.timeServer_notify
         )
-
-        //----------------------------------------------------------------------
-        // Ticker
-        //----------------------------------------------------------------------
-        component Ticker ticker;
 
         //----------------------------------------------------------------------
         // NwStack
         //----------------------------------------------------------------------
         component NwStack nwStack;
 
-        NwStack_INSTANCE_CONNECT(
+        NetworkStack_PicoTcp_INSTANCE_CONNECT(
             nwStack,
-            ticker.e_timeout_nwstacktick,
             nwDriver
         )
 
@@ -68,14 +58,9 @@ assembly {
         //----------------------------------------------------------------------
         component TlsServer tlsServer;
 
-        NwStack_INSTANCE_CONNECT_CLIENT(
+        NetworkStack_PicoTcp_INSTANCE_CONNECT_CLIENTS(
             nwStack,
-            tlsServer,
-            networkStack_rpc,
-            // Since the Listener will handle incoming connections, it requires
-            // a minimum of two sockets.
-            socket_1_port,
-            socket_2_port)
+            tlsServer, networkStack)
 
         //----------------------------------------------------------------------
         // EntropySource
@@ -89,10 +74,18 @@ assembly {
     }
     configuration {
         TimeServer_CLIENT_ASSIGN_BADGES(
-            ticker.timeServer_rpc,
             nwStack.timeServer_rpc
         )
         // Platform specific configuration.
         TLS_SERVER_NIC_CONFIG(nwDriver)
+
+        NetworkStack_PicoTcp_CLIENT_ASSIGN_BADGES(
+            tlsServer, networkStack
+        )
+
+        NetworkStack_PicoTcp_INSTANCE_CONFIGURE_CLIENTS(
+            nwStack,
+            2
+        )
     }
 }

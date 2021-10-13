@@ -112,35 +112,14 @@ DeclareCAmkESComponent(
         mbedtls_for_tls_server
 )
 
-DeclareCAmkESComponent(
+NetworkStack_PicoTcp_DeclareCAmkESComponent(
     NwStack
-    SOURCES
-        components/NwStack/src/NwStack.c
     C_FLAGS
-        -Wall
-        -Werror
-        -DNUM_SOCKETS=NETWORK_STACK_NUM_SOCKETS
-        -DCFG_ETH_ADDR=ETH_ADDR
-        -DCFG_ETH_GATEWAY_ADDR=ETH_GATEWAY_ADDR
-        -DCFG_ETH_SUBNET_MASK=ETH_SUBNET_MASK
-    LIBS
-        system_config
-        os_core_api
-        lib_debug
-        os_network_lib
-        TimeServer_client
-)
-
-DeclareCAmkESComponent(
-    Ticker
-    SOURCES
-        components/Ticker/src/Ticker.c
-    C_FLAGS
-        -Wall
-        -Werror
-    LIBS
-        os_core_api
-        lib_debug
+        -DNetworkStack_PicoTcp_USE_HARDCODED_IPADDR
+        -DDEV_ADDR=ETH_ADDR
+        -DGATEWAY_ADDR=ETH_GATEWAY_ADDR
+        -DSUBNET_MASK=ETH_SUBNET_MASK
+        -DOS_NETWORK_MAXIMUM_SOCKET_NO=NETWORK_STACK_NUM_SOCKETS
 )
 
 TimeServer_DeclareCAmkESComponent(

@@ -53,14 +53,13 @@
 //-----------------------------------------------------------------------------
 // TLS Server
 //-----------------------------------------------------------------------------
-#define TLS_SERVER_NUM_SOCKETS      2
 #define TLS_SERVER_PORT             5560
 
 
 //-----------------------------------------------------------------------------
 // Network Stack
 //-----------------------------------------------------------------------------
-#define NETWORK_STACK_NUM_SOCKETS   TLS_SERVER_NUM_SOCKETS
+#define NETWORK_STACK_NUM_SOCKETS   2
 #define ETH_ADDR                    "10.0.0.10"
 #define ETH_GATEWAY_ADDR            "10.0.0.1"
 #define ETH_SUBNET_MASK             "255.255.255.0"

@@ -9,6 +9,7 @@
 
 #include "lib_compiler/compiler.h"
 #include "lib_debug/Debug.h"
+#include <sel4/sel4.h>
 #include <camkes.h>
 #include <string.h>
 
@@ -16,7 +17,6 @@
 
 #include "OS_Error.h"
 #include "OS_Network.h"
-#include "OS_NetworkStackClient.h"
 
 #include "mbedtls/certs.h"
 #include "mbedtls/ctr_drbg.h"
@@ -55,24 +55,133 @@ static const int cCipherSuites[] =
     0 // list needs to be 0 terminated
 };
 
+static const if_OS_Socket_t networkStackCtx =
+    IF_OS_SOCKET_ASSIGN(networkStack);
+
 //------------------------------------------------------------------------------
 
-static void
-initNetworkClient(void)
+static OS_Error_t
+waitForNetworkStackInit(
+    const if_OS_Socket_t* const ctx)
 {
-    static OS_Dataport_t dataports[TLS_SERVER_NUM_SOCKETS] =
-    {
-        OS_DATAPORT_ASSIGN(socket_1_port),
-        OS_DATAPORT_ASSIGN(socket_2_port)
-    };
+    OS_NetworkStack_State_t networkStackState;
 
-    static OS_NetworkStackClient_SocketDataports_t config =
+    for (;;)
     {
-        .number_of_sockets = ARRAY_SIZE(dataports),
-        .dataport = dataports
-    };
+        networkStackState = OS_NetworkSocket_getStatus(ctx);
+        if (networkStackState == RUNNING)
+        {
+            // NetworkStack up and running.
+            return OS_SUCCESS;
+        }
+        else if (networkStackState == FATAL_ERROR)
+        {
+            // NetworkStack will not come up.
+            Debug_LOG_ERROR("A FATAL_ERROR occurred in the Network Stack component.");
+            return OS_ERROR_ABORTED;
+        }
 
-    OS_NetworkStackClient_init(&config);
+        seL4_Yield(); // Yield and try again next time.
+    }
+}
+
+static OS_Error_t
+waitForIncomingConnection(
+    const int srvHandleId)
+{
+    OS_Error_t ret;
+
+    // Wait for the event letting us know that the connection was successfully
+    // established.
+    for (;;)
+    {
+        networkStack_event_notify_wait();
+
+        char evtBuffer[128];
+        const size_t evtBufferSize = sizeof(evtBuffer);
+        int numberOfSocketsWithEvents;
+
+        ret = OS_NetworkSocket_getPendingEvents(
+                  &networkStackCtx,
+                  evtBuffer,
+                  evtBufferSize,
+                  &numberOfSocketsWithEvents);
+        if (ret != OS_SUCCESS)
+        {
+            Debug_LOG_ERROR("OS_NetworkSocket_getPendingEvents() failed, code %d",
+                            ret);
+            break;
+        }
+
+        if (numberOfSocketsWithEvents == 0)
+        {
+            Debug_LOG_TRACE("OS_NetworkSocket_getPendingEvents() returned "
+                            "without any pending events");
+            continue;
+        }
+
+        // We only opened one socket, so if we get more events, this is not ok.
+        if (numberOfSocketsWithEvents != 1)
+        {
+            Debug_LOG_ERROR("OS_NetworkSocket_getPendingEvents() returned with "
+                            "unexpected #events: %d", numberOfSocketsWithEvents);
+            ret = OS_ERROR_INVALID_STATE;
+            break;
+        }
+
+        OS_NetworkSocket_Evt_t event;
+        memcpy(&event, evtBuffer, sizeof(event));
+
+        if (event.socketHandle != srvHandleId)
+        {
+            Debug_LOG_ERROR("Unexpected handle received: %d, expected: %d",
+                            event.socketHandle, srvHandleId);
+            ret = OS_ERROR_INVALID_HANDLE;
+            break;
+        }
+
+        // Socket has been closed by NetworkStack component.
+        if (event.eventMask & OS_SOCK_EV_FIN)
+        {
+            Debug_LOG_ERROR("OS_NetworkSocket_getPendingEvents() returned "
+                            "OS_SOCK_EV_FIN for handle: %d",
+                            event.socketHandle);
+            ret = OS_ERROR_NETWORK_CONN_REFUSED;
+            break;
+        }
+
+        // Incoming connection received.
+        if (event.eventMask & OS_SOCK_EV_CONN_ACPT)
+        {
+            Debug_LOG_DEBUG("OS_NetworkSocket_getPendingEvents() returned "
+                            "connection established for handle: %d",
+                            event.socketHandle);
+            ret = OS_SUCCESS;
+            break;
+        }
+
+        // Remote socket requested to be closed only valid for clients.
+        if (event.eventMask & OS_SOCK_EV_CLOSE)
+        {
+            Debug_LOG_ERROR("OS_NetworkSocket_getPendingEvents() returned "
+                            "OS_SOCK_EV_CLOSE for handle: %d",
+                            event.socketHandle);
+            ret = OS_ERROR_CONNECTION_CLOSED;
+            break;
+        }
+
+        // Error received - print error.
+        if (event.eventMask & OS_SOCK_EV_ERROR)
+        {
+            Debug_LOG_ERROR("OS_NetworkSocket_getPendingEvents() returned "
+                            "OS_SOCK_EV_ERROR for handle: %d, code: %d",
+                            event.socketHandle, event.currentError);
+            ret = event.currentError;
+            break;
+        }
+    }
+
+    return ret;
 }
 
 static int
@@ -86,10 +195,23 @@ sendFunc(
 
     OS_Error_t err = OS_NetworkSocket_write(*socket, buf, n, &n);
 
-    if (OS_SUCCESS != err)
+    switch (err)
     {
+    case OS_SUCCESS:
+        Debug_LOG_INFO(
+            "OS_NetworkSocket_write() sent %zu bytes of data", n);
+        break;
+
+    case OS_ERROR_TRY_AGAIN:
+        Debug_LOG_TRACE(
+            "OS_NetworkSocket_write() reported try again");
+        n = MBEDTLS_ERR_SSL_WANT_WRITE;
+        break;
+
+    default:
         Debug_LOG_ERROR("OS_NetworkSocket_write() failed, error %d", err);
         n = -1;
+        break;
     }
 
     return n;
@@ -104,11 +226,6 @@ recvFunc(
     OS_NetworkSocket_Handle_t* socket = (OS_NetworkSocket_Handle_t*)ctx;
     size_t n = len > MAX_NW_SIZE ? MAX_NW_SIZE : len;
 
-    // TODO: Check if we currently receiving less data than requested or if we
-    // are only supporting the "happy path".
-    // TODO: Consider returning MBEDTLS_ERR_SSL_WANT_WRITE as this is described
-    // at the definition of mbedtls_ssl_send_t.
-
     OS_Error_t err = OS_NetworkSocket_read(*socket, buf, n, &n);
 
     switch (err)
@@ -116,7 +233,12 @@ recvFunc(
     case OS_SUCCESS:
         Debug_LOG_INFO(
             "OS_NetworkSocket_read() received %zu bytes of data", n);
-        // n = n;
+        break;
+
+    case OS_ERROR_TRY_AGAIN:
+        Debug_LOG_TRACE(
+            "OS_NetworkSocket_read() reported try again");
+        n = MBEDTLS_ERR_SSL_WANT_READ;
         break;
 
     case OS_ERROR_CONNECTION_CLOSED:
@@ -221,25 +343,49 @@ run(void)
 {
     Debug_LOG_INFO("Starting TLS Server");
 
-    initNetworkClient();
-
-    OS_NetworkServer_Socket_t tcpSocket =
+    // Check and wait until the NetworkStack component is up and running.
+    OS_Error_t err = waitForNetworkStackInit(&networkStackCtx);
+    if (OS_SUCCESS != err)
     {
-        .domain = OS_AF_INET,
-        .type   = OS_SOCK_STREAM,
-        .listen_port = TLS_SERVER_PORT,
-        .backlog   = 1
-    };
+        Debug_LOG_ERROR("waitForNetworkStackInit() failed with: %d", err);
+        return -1;
+    }
 
-    OS_NetworkServer_Handle_t hServer;
-    OS_Error_t err = OS_NetworkServerSocket_create(
-                        NULL,
-                        &tcpSocket,
-                        &hServer);
-
+    OS_NetworkSocket_Handle_t hServer;
+    err = OS_NetworkSocket_create(
+              &networkStackCtx,
+              &hServer,
+              OS_AF_INET,
+              OS_SOCK_STREAM);
     if (err != OS_SUCCESS)
     {
-        Debug_LOG_ERROR("OS_NetworkServerSocket_create() failed, code %d", err);
+        Debug_LOG_ERROR("OS_NetworkSocket_create() failed, code %d", err);
+        return -1;
+    }
+
+    const OS_NetworkSocket_Addr_t dstAddr =
+    {
+        .addr = OS_INADDR_ANY_STR,
+        .port = TLS_SERVER_PORT
+    };
+
+    err = OS_NetworkSocket_bind(
+              hServer,
+              &dstAddr);
+    if (err != OS_SUCCESS)
+    {
+        Debug_LOG_ERROR("OS_NetworkSocket_bind() failed, code %d", err);
+        OS_NetworkSocket_close(hServer);
+        return -1;
+    }
+
+    err = OS_NetworkSocket_listen(
+              hServer,
+              1);
+    if (err != OS_SUCCESS)
+    {
+        Debug_LOG_ERROR("OS_NetworkSocket_listen() failed, code %d", err);
+        OS_NetworkSocket_close(hServer);
         return -1;
     }
 
@@ -367,14 +513,28 @@ run(void)
         Debug_LOG_INFO( "  . Waiting for a remote connection ..." );
 
         OS_NetworkSocket_Handle_t hSocket;
-        err = OS_NetworkServerSocket_accept(
-                  hServer,
-                  &hSocket);
+        OS_NetworkSocket_Addr_t srcAddr = {0};
+
+        do
+        {
+            err = waitForIncomingConnection(hServer.handleID);
+            if (err != OS_SUCCESS)
+            {
+                Debug_LOG_ERROR("waitForIncomingConnection() failed, error %d", err);
+                goto exit;
+            }
+
+            err = OS_NetworkSocket_accept(
+                      hServer,
+                      &hSocket,
+                      &srcAddr);
+        }
+        while (err == OS_ERROR_TRY_AGAIN);
 
         if (err != OS_SUCCESS)
         {
-            Debug_LOG_ERROR("OS_NetworkServerSocket_accept() failed, error %d", err);
-            continue;
+            Debug_LOG_ERROR("OS_NetworkSocket_accept() failed, error %d", err);
+            goto exit;
         }
 
         mbedtls_ssl_set_bio( &ssl, &hSocket, sendFunc, recvFunc, NULL );
@@ -388,8 +548,11 @@ run(void)
 
         while( ( ret = mbedtls_ssl_handshake( &ssl ) ) != 0 )
         {
-            if( ret != MBEDTLS_ERR_SSL_WANT_READ
-                && ret != MBEDTLS_ERR_SSL_WANT_WRITE )
+            if( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
+            {
+                seL4_Yield(); // Yield and try again next time.
+            }
+            else
             {
                 Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_handshake returned -0x%04X", -ret );
                 goto exit;
@@ -400,6 +563,7 @@ run(void)
 
         // ---------------------------------------------------------------------
         // Read the HTTP request
+
         int len;
         unsigned char buf[1024];
 
@@ -412,7 +576,10 @@ run(void)
             ret = mbedtls_ssl_read( &ssl, buf, len );
 
             if( ret == MBEDTLS_ERR_SSL_WANT_READ )
+            {
+                seL4_Yield(); // Yield and try again next time.
                 continue;
+            }
 
             if( ret <= 0 )
             {
@@ -447,7 +614,11 @@ run(void)
 
         while( ( ret = mbedtls_ssl_write( &ssl, buf, len ) ) <= 0 )
         {
-            if( ret != MBEDTLS_ERR_SSL_WANT_WRITE )
+            if( ret == MBEDTLS_ERR_SSL_WANT_WRITE )
+            {
+                seL4_Yield(); // Yield and try again next time.
+            }
+            else
             {
                 Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_write returned -0x%04X", -ret );
                 goto exit;
@@ -464,8 +635,11 @@ run(void)
 
         while( ( ret = mbedtls_ssl_close_notify( &ssl ) ) < 0 )
         {
-            if( ret != MBEDTLS_ERR_SSL_WANT_READ
-                && ret != MBEDTLS_ERR_SSL_WANT_WRITE )
+            if( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
+            {
+                seL4_Yield(); // Yield and try again next time.
+            }
+            else
             {
                 Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_close_notify returned -0x%04X", -ret );
                 goto exit;

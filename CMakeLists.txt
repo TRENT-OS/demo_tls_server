@@ -34,8 +34,9 @@ DeclareCAmkESComponent(
         os_core_api
         lib_compiler
         lib_debug
+        os_crypto
         os_socket_client
-        3rdparty_mbedtls_for_tls_server
+        os_tls_server
 )
 
 NetworkStack_PicoTcp_DeclareCAmkESComponent(

@@ -10,7 +10,8 @@
 
 import <if_OS_Entropy.camkes>;
 
-component TlsServer {
+component TlsServer
+{
     control;
 
     //--------------------------------------------------------------------------

@@ -418,33 +418,37 @@ run(void)
     // Init entropy source
 
     if_OS_Entropy_t entropy = IF_OS_ENTROPY_ASSIGN(
-                                entropy_rpc,
-                                entropy_port);
+                                  entropy_rpc,
+                                  entropy_port);
 
     // -------------------------------------------------------------------------
     // Load the certificates and private RSA key
 
     Debug_LOG_INFO( "  . Loading the server cert. and key..." );
 
-    int ret = mbedtls_x509_crt_parse( &srvcert, (const unsigned char *) cTlsServerCert,
-                          cTlsServerCertLen );
-    if( ret != 0 )
+    int ret = mbedtls_x509_crt_parse( &srvcert,
+                                      (const unsigned char*) cTlsServerCert,
+                                      cTlsServerCertLen );
+    if ( ret != 0 )
     {
-        Debug_LOG_ERROR( "  . failed  !  mbedtls_x509_crt_parse returned -0x%04X", -ret );
+        Debug_LOG_ERROR( "  . failed  !  mbedtls_x509_crt_parse returned -0x%04X",
+                         -ret );
         return -1;
     }
 
-    ret = mbedtls_x509_crt_parse( &srvcert, (const unsigned char *) cTlsServerRootCert,
-                          cTlsServerRootCertLen );
-    if( ret != 0 )
+    ret = mbedtls_x509_crt_parse( &srvcert,
+                                  (const unsigned char*) cTlsServerRootCert,
+                                  cTlsServerRootCertLen );
+    if ( ret != 0 )
     {
-        Debug_LOG_ERROR( "  . failed  !  mbedtls_x509_crt_parse returned -0x%04X", -ret );
+        Debug_LOG_ERROR( "  . failed  !  mbedtls_x509_crt_parse returned -0x%04X",
+                         -ret );
         return -1;
     }
 
-    ret = mbedtls_pk_parse_key( &pkey, (const unsigned char *) cTlsServerKey,
-                         cTlsServerKeyLen, NULL, 0 );
-    if( ret != 0 )
+    ret = mbedtls_pk_parse_key( &pkey, (const unsigned char*) cTlsServerKey,
+                                cTlsServerKeyLen, NULL, 0 );
+    if ( ret != 0 )
     {
         Debug_LOG_ERROR( "  . failed  !  mbedtls_pk_parse_key returned -0x%04X", -ret );
         return -1;
@@ -457,11 +461,11 @@ run(void)
 
     Debug_LOG_INFO( "  . Seeding the random number generator..." );
 
-    const char * pers = "ssl_server";
+    const char* pers = "ssl_server";
 
-    if( ( ret = mbedtls_ctr_drbg_seed( &ctr_drbg, entropyWrapper, &entropy,
-                               (const unsigned char *) pers,
-                               strlen( pers ) ) ) != 0 )
+    if ( ( ret = mbedtls_ctr_drbg_seed( &ctr_drbg, entropyWrapper, &entropy,
+                                        (const unsigned char*) pers,
+                                        strlen( pers ) ) ) != 0 )
     {
         Debug_LOG_ERROR( "  . failed  ! mbedtls_ctr_drbg_seed returned -0x%04X", -ret );
         return -1;
@@ -474,12 +478,13 @@ run(void)
 
     Debug_LOG_INFO( "  . Setting up the SSL data...." );
 
-    if( ( ret = mbedtls_ssl_config_defaults( &conf,
-                    MBEDTLS_SSL_IS_SERVER,
-                    MBEDTLS_SSL_TRANSPORT_STREAM,
-                    MBEDTLS_SSL_PRESET_DEFAULT ) ) != 0 )
+    if ( ( ret = mbedtls_ssl_config_defaults( &conf,
+                                              MBEDTLS_SSL_IS_SERVER,
+                                              MBEDTLS_SSL_TRANSPORT_STREAM,
+                                              MBEDTLS_SSL_PRESET_DEFAULT ) ) != 0 )
     {
-        Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_config_defaults returned -0x%04X", -ret );
+        Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_config_defaults returned -0x%04X",
+                         -ret );
         return -1;
     }
 
@@ -494,13 +499,14 @@ run(void)
 
     mbedtls_ssl_conf_ca_chain( &conf, srvcert.next, NULL );
 
-    if( ( ret = mbedtls_ssl_conf_own_cert( &conf, &srvcert, &pkey ) ) != 0 )
+    if ( ( ret = mbedtls_ssl_conf_own_cert( &conf, &srvcert, &pkey ) ) != 0 )
     {
-        Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_conf_own_cert returned -0x%04X", -ret );
+        Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_conf_own_cert returned -0x%04X",
+                         -ret );
         return -1;
     }
 
-    if( ( ret = mbedtls_ssl_setup( &ssl, &conf ) ) != 0 )
+    if ( ( ret = mbedtls_ssl_setup( &ssl, &conf ) ) != 0 )
     {
         Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_setup returned -0x%04X", -ret );
         return -1;
@@ -551,9 +557,9 @@ run(void)
 
         Debug_LOG_INFO( "  . Performing the SSL/TLS handshake..." );
 
-        while( ( ret = mbedtls_ssl_handshake( &ssl ) ) != 0 )
+        while ( ( ret = mbedtls_ssl_handshake( &ssl ) ) != 0 )
         {
-            if( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
+            if ( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
             {
                 seL4_Yield(); // Yield and try again next time.
             }
@@ -580,33 +586,35 @@ run(void)
             memset( buf, 0, sizeof( buf ) );
             ret = mbedtls_ssl_read( &ssl, buf, len );
 
-            if( ret == MBEDTLS_ERR_SSL_WANT_READ )
+            if ( ret == MBEDTLS_ERR_SSL_WANT_READ )
             {
                 seL4_Yield(); // Yield and try again next time.
                 continue;
             }
 
-            if( ret <= 0 )
+            if ( ret <= 0 )
             {
-                switch( ret )
+                switch ( ret )
                 {
-                    case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
-                        Debug_LOG_INFO( "  . connection was closed gracefully" );
-                        break;
+                case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
+                    Debug_LOG_INFO( "  . connection was closed gracefully" );
+                    break;
 
-                    default:
-                        Debug_LOG_ERROR( "  . mbedtls_ssl_read returned -0x%04X", -ret );
-                        break;
+                default:
+                    Debug_LOG_ERROR( "  . mbedtls_ssl_read returned -0x%04X", -ret );
+                    break;
                 }
 
                 break;
             }
 
             len = ret;
-            Debug_LOG_INFO( "  . %d bytes read %s", len, (char *) buf );
+            Debug_LOG_INFO( "  . %d bytes read %s", len, (char*) buf );
 
-            if( ret > 0 )
+            if ( ret > 0 )
+            {
                 break;
+            }
         }
 
         // ---------------------------------------------------------------------
@@ -614,12 +622,12 @@ run(void)
 
         Debug_LOG_INFO( "  .  > Write to client:" );
 
-        len = sprintf( (char *) buf, HTTP_RESPONSE,
-                            mbedtls_ssl_get_ciphersuite( &ssl ) );
+        len = sprintf( (char*) buf, HTTP_RESPONSE,
+                       mbedtls_ssl_get_ciphersuite( &ssl ) );
 
-        while( ( ret = mbedtls_ssl_write( &ssl, buf, len ) ) <= 0 )
+        while ( ( ret = mbedtls_ssl_write( &ssl, buf, len ) ) <= 0 )
         {
-            if( ret == MBEDTLS_ERR_SSL_WANT_WRITE )
+            if ( ret == MBEDTLS_ERR_SSL_WANT_WRITE )
             {
                 seL4_Yield(); // Yield and try again next time.
             }
@@ -631,22 +639,23 @@ run(void)
         }
 
         len = ret;
-        Debug_LOG_INFO( "  . %d bytes written %s", len, (char *) buf );
+        Debug_LOG_INFO( "  . %d bytes written %s", len, (char*) buf );
 
         // ---------------------------------------------------------------------
         // Close connection
 
         Debug_LOG_INFO( "  . Closing the connection..." );
 
-        while( ( ret = mbedtls_ssl_close_notify( &ssl ) ) < 0 )
+        while ( ( ret = mbedtls_ssl_close_notify( &ssl ) ) < 0 )
         {
-            if( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
+            if ( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
             {
                 seL4_Yield(); // Yield and try again next time.
             }
             else
             {
-                Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_close_notify returned -0x%04X", -ret );
+                Debug_LOG_ERROR( "  . failed  ! mbedtls_ssl_close_notify returned -0x%04X",
+                                 -ret );
                 goto exit;
             }
         }

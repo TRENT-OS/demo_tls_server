@@ -25,8 +25,10 @@ TimeServer_COMPONENT_DEFINE(TimeServer)
 // Include the platform specific components and macros.
 #include "plat_nic.camkes"
 
-assembly {
-    composition {
+assembly
+{
+    composition
+    {
 
         //----------------------------------------------------------------------
         // NIC Drivers
@@ -72,7 +74,8 @@ assembly {
             tlsServer.entropy_rpc,
             tlsServer.entropy_port)
     }
-    configuration {
+    configuration
+    {
         TimeServer_CLIENT_ASSIGN_BADGES(
             nwStack.timeServer_rpc
         )

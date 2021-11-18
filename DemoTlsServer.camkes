@@ -33,7 +33,7 @@ assembly
         //----------------------------------------------------------------------
         // NIC Drivers
         //----------------------------------------------------------------------
-        TLS_SERVER_NIC_INSTANCES(nwDriver)
+        DEMO_TLS_SERVER_NIC_INSTANCES(nwDriver)
 
         //----------------------------------------------------------------------
         // TimeServer
@@ -80,7 +80,7 @@ assembly
             nwStack.timeServer_rpc
         )
         // Platform specific configuration.
-        TLS_SERVER_NIC_CONFIG(nwDriver)
+        DEMO_TLS_SERVER_NIC_CONFIG(nwDriver)
 
         NetworkStack_PicoTcp_CLIENT_ASSIGN_BADGES(
             tlsServer, networkStack

@@ -19,7 +19,7 @@ NIC_ChanMux_COMPONENT_DEFINE(
     NIC_DRIVER_RINGBUFFER_SIZE)
 
 
-#define TLS_SERVER_NIC_INSTANCES(_nic_) \
+#define DEMO_TLS_SERVER_NIC_INSTANCES(_nic_) \
     component ChanMux_UART chanMux_UART; \
     component UART_CHANMUX uart; \
     ChanMux_UART_INSTANCE_CONNECT(chanMux_UART, uart) \
@@ -27,7 +27,7 @@ NIC_ChanMux_COMPONENT_DEFINE(
     component NwDriver _nic_; \
     ChanMux_INSTANCE_CONNECT_CLIENT(chanMux_UART, _nic_, data, ctrl)
 
-#define TLS_SERVER_NIC_CONFIG(_nic_) \
+#define DEMO_TLS_SERVER_NIC_CONFIG(_nic_) \
     ChanMux_UART_CLIENT_ASSIGN_BADGES( \
         _nic_.chanMux_Rpc \
     )

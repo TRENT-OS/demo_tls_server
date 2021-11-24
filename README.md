@@ -1,6 +1,6 @@
 # Demo TLS Server
 
-Temporary demo system for the TLS server proof-of-concept (PoC).
+Temporary demo system for the TLS Server proof-of-concept (PoC).
 
 
 - [Demo TLS Server](#demo-tls-server)
@@ -55,7 +55,7 @@ See `src/demos/demo_tls_server/test_applications`.
 
 - Run script `connect_to_tls_server.sh` to start the OpenSSL client.
 - Trigger HTTP response by pressing enter (i.e. send anything).
-- TLS server page shows used cipher suite.
+- TLS Server page shows "Hello TLS!" message.
 
 #### Enumerate Cipher Suites
 
@@ -73,7 +73,7 @@ See `src/demos/demo_tls_server/test_applications`.
 
 - Open `https://172.17.0.1:5560`.
 - Select client certificate (empty password).
-- TLS server page shows used cipher suite.
+- TLS Server page shows "Hello TLS!" message.
 
 ### Curl
 
@@ -83,16 +83,22 @@ NOTE:
   page.
 
 ```bash
-curl -k --cacert certs/CA.crt --cert certs/client.crt --key certs/client.key https://172.17.0.1:5560/test.txt
+curl -k --output - --cacert certs/CA.crt --cert certs/client.crt --key certs/client.key https://172.17.0.1:5560/test.txt
 ```
 
 ### Demo TLS API
 
-The Demo TLS API and the TLS client library `os_tls` have been prepared on
-branch **SEOS-3055-tls-client-authentication**:
-- IP address / port and server cert (see `demo_tls_api::DemoConfig.h`).
-- Prototypical preparation of client authentication with client cert + key (see
-  `os_tls::TlsLib.c`).
+The Demo TLS API can be connected to the TLS Server after configuring the IP
+address / port and server cert properly (see `demo_tls_api::DemoConfig.h`).
+
+WARNING:
+- Client authentication is not supported by Demo TLS API and has to be disabled
+  by setting flag OS_Tls_FLAG_NO_VERIFY in OS_Tls_Config_t in `TlsServer.c`.
+- For checking the client authentication there is a branch of Demo TLS API
+  (**SEOS-0000-use-with-demo-tls-server**) that contains a configuration of the
+  "library mode" that works together with the TLS Server. Since the TLS Server
+  component (implementing a TLS client) does not yet support this configuration
+  option, the "client mode" is disabled in this branch.
 
 NOTE:
 - Since the current TLS Server does not parse the concrete HTTP request, the
@@ -113,12 +119,13 @@ seos_sandbox/scripts/open_trentos_test_env.sh src/demos/demo_tls_api/run_demo.sh
 ### Nmap
 
 WARNING:
-- Client authentication is not supported and has to be disabled in `TlsServer.c`
-  (see `mbedtls_ssl_conf_authmode()`).
-- Enumeration of allowed cipher suites is not very reliable with nmap because it
-  often causes problems in the TLS server at the moment (assert or crash in the
-  network stack).
+- Client authentication is not supported by nmap and has to be disabled by
+  setting flag OS_Tls_FLAG_NO_VERIFY in OS_Tls_Config_t in `TlsServer.c`.
+
+NOTE:
+- The option `--max-parallelism 1` is used to avoid any unwanted side-effects
+  when checking the TLS functionality.
 
 ```bash
-nmap --script ssl-enum-ciphers -p 5560 172.17.0.1
+nmap --script ssl-enum-ciphers -p 5560 172.17.0.1 --max-parallelism 1
 ```

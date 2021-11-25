@@ -391,14 +391,14 @@ exit:
         if (OS_SUCCESS != err)
         {
             Debug_LOG_ERROR("OS_Tls_reset() failed, code %d", err);
-            goto exit;
+            return -1;
         }
 
         err = OS_Socket_close(hSocket);
         if (OS_SUCCESS != err)
         {
             Debug_LOG_ERROR("OS_Socket_close() failed, code %d", err);
-            goto exit;
+            return -1;
         }
 
         Debug_LOG_INFO("TLS connection closed");

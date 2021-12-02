@@ -286,7 +286,7 @@ run(void)
             {
                 Debug_LOG_ERROR("waitForIncomingConnection() failed, code % d",
                                 err);
-                goto exit;
+                goto close_connection;
             }
 
             err = OS_Socket_accept(
@@ -299,7 +299,7 @@ run(void)
         if (err != OS_SUCCESS)
         {
             Debug_LOG_ERROR("OS_Socket_accept() failed, code %d", err);
-            goto exit;
+            goto close_connection;
         }
 
         // ---------------------------------------------------------------------
@@ -315,7 +315,7 @@ run(void)
         if (OS_SUCCESS != err)
         {
             Debug_LOG_ERROR("OS_Tls_handshake() failed, code %d", err);
-            goto exit;
+            goto close_connection;
         }
         Debug_LOG_INFO("TLS connection established");
 
@@ -348,7 +348,7 @@ run(void)
         default:
             Debug_LOG_ERROR("OS_Tls_read() failed, code %d, bytes read %zu",
                             err, rxSize);
-            goto exit;
+            goto close_connection;
         }
 
         // ---------------------------------------------------------------------
@@ -367,13 +367,13 @@ run(void)
         if (OS_SUCCESS != err)
         {
             Debug_LOG_ERROR("OS_Tls_write() failed, code %d", err);
-            goto exit;
+            goto close_connection;
         }
 
         txBuf[sizeof(txBuf) - 1] = '\0'; // ensure buffer is nul-terminated
         Debug_LOG_INFO("Sent %zu bytes:\n%s", txSize, txBuf);
 
-exit:
+close_connection:
         // ---------------------------------------------------------------------
         // Close connection
 

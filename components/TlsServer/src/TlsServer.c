@@ -231,7 +231,7 @@ run(void)
 
     // -------------------------------------------------------------------------
 
-    OS_Crypto_Config_t cryptoCfg =
+    const OS_Crypto_Config_t cryptoCfg =
     {
         .mode = OS_Crypto_MODE_LIBRARY,
         .entropy = IF_OS_ENTROPY_ASSIGN(

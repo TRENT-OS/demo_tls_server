@@ -264,6 +264,10 @@ run(void)
     if (OS_SUCCESS != err)
     {
         Debug_LOG_ERROR("OS_Tls_init() failed, code %d", err);
+
+        // Free previously allocated memory before return.
+        OS_Crypto_free(tlsConfig.library.crypto.handle);
+
         return -1;
     }
     Debug_LOG_INFO("TLS library successfully initialized");
@@ -381,14 +385,14 @@ close_connection:
         if (OS_SUCCESS != err)
         {
             Debug_LOG_ERROR("OS_Tls_reset() failed, code %d", err);
-            return -1;
+            break;
         }
 
         err = OS_Socket_close(hSocket);
         if (OS_SUCCESS != err)
         {
             Debug_LOG_ERROR("OS_Socket_close() failed, code %d", err);
-            return -1;
+            break;
         }
 
         Debug_LOG_INFO("TLS connection closed");
@@ -396,5 +400,11 @@ close_connection:
         // ---------------------------------------------------------------------
     }
 
-    return 0;
+    // -------------------------------------------------------------------------
+    // Free memory
+
+    OS_Crypto_free(tlsConfig.library.crypto.handle);
+    OS_Tls_free(hTls);
+
+    return -1;
 }

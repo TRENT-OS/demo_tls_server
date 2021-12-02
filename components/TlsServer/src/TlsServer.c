@@ -20,17 +20,7 @@
 #include "OS_Socket.h"
 #include "OS_Tls.h"
 
-#include "mbedtls/certs.h"
-#include "mbedtls/ctr_drbg.h"
-#include "mbedtls/ssl.h"
-#include "mbedtls/debug.h"
-
 //------------------------------------------------------------------------------
-
-//! Maximum buffer size for send / receive functions.
-#define MAX_NW_SIZE OS_DATAPORT_DEFAULT_SIZE
-
-#define DEBUG_LEVEL 0
 
 #define HTTP_RESPONSE \
     "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n" \

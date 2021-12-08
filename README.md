@@ -82,8 +82,13 @@ NOTE:
   actual request is irrelevant and the TLS Server will reply with the default
   page.
 
+WARNING:
+- The option `-k` should not be used. It deactivates server verification and
+  makes the transfer insecure.
+
 ```bash
-curl -k --output - --cacert certs/CA.crt --cert certs/client.crt --key certs/client.key https://172.17.0.1:5560/test.txt
+curl --output - --cacert certs/CA.crt --cert certs/client.crt \
+    --key certs/client.key https://172.17.0.1:5560/test.txt
 ```
 
 ### Demo TLS API

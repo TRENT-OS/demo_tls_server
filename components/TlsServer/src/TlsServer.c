@@ -368,7 +368,7 @@ run(void)
                 break;
             default:
                 Debug_LOG_ERROR("OS_Tls_read() failed, code %d, bytes read %zu",
-                                err, dataSize);
+                                err, (cRxSize - rxRemainingSize));
                 goto close_connection;
             }
         }

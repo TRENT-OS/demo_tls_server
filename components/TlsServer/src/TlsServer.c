@@ -327,55 +327,92 @@ run(void)
         // Receive request
 
         static char rxBuf[1024] = {0};
-        size_t rxSize = sizeof(rxBuf);
+        const size_t cRxSize = sizeof(rxBuf);
+        const size_t cRequiredRxSize = 1; // stop reading after at least 1 byte
 
-        do
-        {
-            seL4_Yield();
-            err = OS_Tls_read(hTls, rxBuf, &rxSize);
-        }
-        while (err == OS_ERROR_WOULD_BLOCK);
+        bool stopReading = false;
+        size_t rxRemainingSize = cRxSize;
 
-        switch (err)
+        while (!stopReading && (rxRemainingSize > 0))
         {
-        case OS_SUCCESS:
-            rxBuf[sizeof(rxBuf) - 1] = '\0'; // ensure buffer is nul-terminated
-            Debug_LOG_INFO("Received %zu bytes:\n%s", rxSize, rxBuf);
-            break;
-        case OS_ERROR_CONNECTION_CLOSED:
-            Debug_LOG_WARNING("OS_Tls_read() connection closed by network "
-                              "stack");
-            break;
-        case OS_ERROR_NETWORK_CONN_SHUTDOWN:
-            Debug_LOG_WARNING("OS_Tls_read() connection reset by peer");
-            break;
-        default:
-            Debug_LOG_ERROR("OS_Tls_read() failed, code %d, bytes read %zu",
-                            err, rxSize);
-            goto close_connection;
+            size_t dataSize = rxRemainingSize;
+
+            err = OS_Tls_read(hTls,
+                              (rxBuf + (cRxSize - rxRemainingSize)),
+                              &dataSize);
+
+            switch (err)
+            {
+            case OS_SUCCESS:
+                rxRemainingSize -= dataSize;
+
+                if ((cRxSize - rxRemainingSize) >= cRequiredRxSize)
+                {
+                    // Stop reading if the required size has been received.
+                    stopReading = true;
+                }
+                break;
+            case OS_ERROR_WOULD_BLOCK:
+                // Donate the remaining timeslice to a thread of the same
+                // priority and try to read again with the next turn.
+                seL4_Yield();
+                break;
+            case OS_ERROR_CONNECTION_CLOSED:
+                Debug_LOG_WARNING("OS_Tls_read() connection closed by network "
+                                  "stack");
+                stopReading = true;
+                break;
+            case OS_ERROR_NETWORK_CONN_SHUTDOWN:
+                Debug_LOG_WARNING("OS_Tls_read() connection reset by peer");
+                stopReading = true;
+                break;
+            default:
+                Debug_LOG_ERROR("OS_Tls_read() failed, code %d, bytes read %zu",
+                                err, dataSize);
+                goto close_connection;
+            }
         }
+
+        rxBuf[cRxSize - 1] = '\0'; // ensure buffer is nul-terminated
+        Debug_LOG_INFO("Received %zu bytes:\n%s",
+                       (cRxSize - rxRemainingSize),
+                       rxBuf);
 
         // ---------------------------------------------------------------------
         // Send response
 
         unsigned char txBuf[] = HTTP_RESPONSE;
-        size_t txSize = sizeof(txBuf);
+        const size_t cTxSize = sizeof(txBuf);
 
-        do
+        size_t txRemainingSize = cTxSize;
+
+        while (txRemainingSize > 0)
         {
-            seL4_Yield();
-            err = OS_Tls_write(hTls, txBuf, &txSize);
-        }
-        while (err == OS_ERROR_WOULD_BLOCK);
+            size_t dataSize = txRemainingSize;
+            err = OS_Tls_write(hTls,
+                               (txBuf + (cTxSize - txRemainingSize)),
+                               &dataSize);
 
-        if (OS_SUCCESS != err)
-        {
-            Debug_LOG_ERROR("OS_Tls_write() failed, code %d", err);
-            goto close_connection;
+            switch (err)
+            {
+            case OS_SUCCESS:
+                txRemainingSize -= dataSize;
+                break;
+            case OS_ERROR_WOULD_BLOCK:
+                // Donate the remaining timeslice to a thread of the same
+                // priority and try to write again with the next turn.
+                seL4_Yield();
+                break;
+            default:
+                Debug_LOG_ERROR("OS_Tls_write() failed, code %d", err);
+                goto close_connection;
+            }
         }
 
-        txBuf[sizeof(txBuf) - 1] = '\0'; // ensure buffer is nul-terminated
-        Debug_LOG_INFO("Sent %zu bytes:\n%s", txSize, txBuf);
+        txBuf[cTxSize - 1] = '\0'; // ensure buffer is nul-terminated
+        Debug_LOG_INFO("Sent %zu bytes:\n%s",
+                       (cTxSize - txRemainingSize),
+                       txBuf);
 
 close_connection:
         // ---------------------------------------------------------------------

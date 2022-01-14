@@ -22,6 +22,8 @@
 
 //------------------------------------------------------------------------------
 
+#define REQUEST_MAX_SIZE 1024
+
 #define HTTP_RESPONSE \
     "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n" \
     "<h2>mbed TLS Test Server</h2>\r\n" \
@@ -31,6 +33,10 @@
 
 static const if_OS_Socket_t networkStackCtx =
     IF_OS_SOCKET_ASSIGN(networkStack);
+
+// Receive buffer with one extra byte to always ensure it is nul-terminated for
+// printing it.
+static char mRxBuf[REQUEST_MAX_SIZE + 1] = {0};
 
 //------------------------------------------------------------------------------
 
@@ -326,19 +332,18 @@ run(void)
         // ---------------------------------------------------------------------
         // Receive request
 
-        static char rxBuf[1024] = {0};
-        const size_t cRxSize = sizeof(rxBuf);
-        const size_t cRequiredRxSize = 1; // stop reading after at least 1 byte
+        // Require minimum 1 byte to be read before the reception is stopped.
+        const size_t cRequiredRxSize = 1;
 
         bool stopReading = false;
-        size_t rxRemainingSize = cRxSize;
+        size_t rxRemainingSize = REQUEST_MAX_SIZE;
 
         while (!stopReading && (rxRemainingSize > 0))
         {
             size_t dataSize = rxRemainingSize;
 
             err = OS_Tls_read(hTls,
-                              (rxBuf + (cRxSize - rxRemainingSize)),
+                              (mRxBuf + (REQUEST_MAX_SIZE - rxRemainingSize)),
                               &dataSize);
 
             switch (err)
@@ -346,7 +351,7 @@ run(void)
             case OS_SUCCESS:
                 rxRemainingSize -= dataSize;
 
-                if ((cRxSize - rxRemainingSize) >= cRequiredRxSize)
+                if ((REQUEST_MAX_SIZE - rxRemainingSize) >= cRequiredRxSize)
                 {
                     // Stop reading if the required size has been received.
                     stopReading = true;
@@ -368,21 +373,20 @@ run(void)
                 break;
             default:
                 Debug_LOG_ERROR("OS_Tls_read() failed, code %d, bytes read %zu",
-                                err, (cRxSize - rxRemainingSize));
+                                err, (REQUEST_MAX_SIZE - rxRemainingSize));
                 goto close_connection;
             }
         }
 
-        rxBuf[cRxSize - 1] = '\0'; // ensure buffer is nul-terminated
         Debug_LOG_INFO("Received %zu bytes:\n%s",
-                       (cRxSize - rxRemainingSize),
-                       rxBuf);
+                       (REQUEST_MAX_SIZE - rxRemainingSize),
+                       mRxBuf);
 
         // ---------------------------------------------------------------------
         // Send response
 
-        unsigned char txBuf[] = HTTP_RESPONSE;
-        const size_t cTxSize = sizeof(txBuf);
+        const unsigned char cTxBuf[] = HTTP_RESPONSE; // nul-terminated string
+        const size_t cTxSize = sizeof(cTxBuf);
 
         size_t txRemainingSize = cTxSize;
 
@@ -390,7 +394,7 @@ run(void)
         {
             size_t dataSize = txRemainingSize;
             err = OS_Tls_write(hTls,
-                               (txBuf + (cTxSize - txRemainingSize)),
+                               (cTxBuf + (cTxSize - txRemainingSize)),
                                &dataSize);
 
             switch (err)
@@ -409,10 +413,9 @@ run(void)
             }
         }
 
-        txBuf[cTxSize - 1] = '\0'; // ensure buffer is nul-terminated
         Debug_LOG_INFO("Sent %zu bytes:\n%s",
                        (cTxSize - txRemainingSize),
-                       txBuf);
+                       cTxBuf);
 
 close_connection:
         // ---------------------------------------------------------------------

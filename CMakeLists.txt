@@ -1,18 +1,22 @@
 #
 # Demo TLS Server
 #
-# Copyright (C) 2021, HENSOLDT Cyber GmbH
+# Copyright (C) 2021-2022, HENSOLDT Cyber GmbH
 #
 
 cmake_minimum_required(VERSION 3.17)
 
-os_set_config_file(
-    "system_config.h"
-    CONFIG_PROJECT_NAME "system_config"
-)
+#-------------------------------------------------------------------------------
+# use the SDK
+find_package("os-sdk" REQUIRED)
+os_sdk_set_defaults()
+os_sdk_setup(CONFIG_FILE "system_config.h" CONFIG_PROJECT "system_config")
+
+# Set additional include paths.
+CAmkESAddCPPInclude("plat/${PLATFORM}")
+
 
 #-------------------------------------------------------------------------------
-
 project(demo_tls_server C)
 
 # Overwrite the default log level of the lower layers to ERROR as the output
@@ -57,5 +61,4 @@ EntropySource_DeclareCAmkESComponent(
     EntropySource
 )
 
-DeclareAndCreateCamkESSystem(DemoTlsServer.camkes)
-GenerateSimulateScript()
+os_sdk_create_CAmkES_system("DemoTlsServer.camkes")
